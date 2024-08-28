@@ -1,0 +1,86 @@
+import 'package:flutter/material.dart';
+import 'package:src/utils/routes_name.dart';
+import 'package:src/views/screens/dashboard_screen.dart';
+import 'package:src/views/screens/geo_location_screen.dart';
+import 'package:src/views/screens/orientation_screen.dart';
+import 'package:src/widgets/dashboard_widget.dart';
+
+const defaultPadding = 20.0;
+// const pages = [
+//   RouteName.dashboardscreen,
+//   RouteName.orientationscreen,
+//   RouteName.geolocationscreen,
+// ];
+
+const pages = [
+  DashboardWidget(),
+  OrientationScreen(),
+  GeoLocationScreen(),
+];
+
+class AppText {
+  static const appName = 'Space Research Center';
+}
+
+extension ColorExtension on Color {
+  /// Convert the color to a darken color based on the [percent]
+  Color darken([int percent = 40]) {
+    assert(1 <= percent && percent <= 100);
+    final value = 1 - percent / 100;
+    return Color.fromARGB(
+      alpha,
+      (red * value).round(),
+      (green * value).round(),
+      (blue * value).round(),
+    );
+  }
+}
+
+class AppColors {
+  static const cardBackgroundColor = Color(0xFF21222D);
+  static const primaryColor = Color(0xFF2697FF);
+  static const secondaryColor = Color(0xFFFFFFFF);
+  static const backgroundColor = Color(0xFF15131C);
+  static const selectionColor = Color(0xFF88B2AC);
+
+  static const Color primary = contentColorCyan;
+  static const Color menuBackground = Color(0xFF090912);
+  static const Color itemsBackground = Color(0xFF1B2339);
+  static const Color pageBackground = Color(0xFF282E45);
+  static const Color mainTextColor1 = Colors.white;
+  static const Color mainTextColor2 = Colors.white70;
+  static const Color mainTextColor3 = Colors.white38;
+  static const Color mainGridLineColor = Colors.white10;
+  static const Color borderColor = Colors.white54;
+  static const Color gridLinesColor = Color(0x11FFFFFF);
+
+  static const Color contentColorBlack = Colors.black;
+  static const Color contentColorWhite = Colors.white;
+  static const Color contentColorBlue = Color(0xFF2196F3);
+  static const Color contentColorYellow = Color(0xFFFFC300);
+  static const Color contentColorOrange = Color(0xFFFF683B);
+  static const Color contentColorGreen = Color(0xFF3BFF49);
+  static const Color contentColorPurple = Color(0xFF6E1BFF);
+  static const Color contentColorPink = Color(0xFFFF3AF2);
+  static const Color contentColorRed = Color(0xFFE80054);
+  static const Color contentColorCyan = Color(0xFF50E4FF);
+
+  // static const backgroundColor = Colors.black;
+  static const neroBlackColor = Color.fromARGB(255, 30, 30, 31);
+  static const pinkishRedColor = Color.fromARGB(255, 254, 0, 63);
+  static const cyanColor = Color.fromARGB(255, 4, 227, 220);
+  // static const borderColor = Colors.grey;
+  static const brownColor = Color.fromARGB(255, 159, 142, 92);
+
+  static const blackPearlColor = Color.fromARGB(255, 22, 30, 41);
+  static const lightSlateGrey = Color.fromARGB(255, 128, 140, 156); //text
+  static const zincColor = Color.fromARGB(255, 191, 199, 210); //headings
+  static const eigengrauColor = Color.fromARGB(255, 16, 21, 29); //background
+  static const squidInkColor = Color.fromARGB(255, 46, 60, 81);
+  static const spanishSkyBlueColor = Color.fromARGB(225, 37, 166, 233);
+  static const mediumSlateBlueColor = Color.fromARGB(255, 137, 100, 232);
+  static const tropicalIndigoColor =
+      Color.fromARGB(255, 168, 127, 251); //button Color
+  static const mediumSeaGreenColor = Color.fromARGB(255, 23, 184, 119);
+  static const deepSaffronColor = Color.fromARGB(255, 255, 162, 62);
+}
