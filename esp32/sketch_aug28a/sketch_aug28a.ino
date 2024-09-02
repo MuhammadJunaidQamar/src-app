@@ -4,15 +4,14 @@
 //using ESP32, ESP32 CAM or ESP8266 microcontroller
 #include <WiFi.h>
 #include <WiFiMulti.h>
-WiFiMulti WiFiMulti;
- 
 #include <PubSubClient.h>
  
 // Update these with values suitable for your network.
  
-const char* ssid = "HUAWEI-7sz5";
-const char* password = "3gwpc2BR";
-const char* mqtt_server = "192.168.18.33";
+WiFiMulti WiFiMulti;
+const char* ssid = "PTCL--KAMRAN";
+const char* password = "19691978";
+const char* mqtt_server = "192.168.10.12";
  
 WiFiClient espClient;
 PubSubClient client(espClient);
