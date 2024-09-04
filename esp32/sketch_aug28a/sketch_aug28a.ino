@@ -10,9 +10,9 @@ WiFiMulti WiFiMulti;
 
 // Update these with values suitable for your network.
 
-const char* ssid = "HUAWEI-7sz5";
-const char* password = "3gwpc2BR";
-const char* mqtt_server = "192.168.18.33";
+const char* ssid = "UCP-INTERNET";
+const char* password = "internet275";
+const char* mqtt_server = "10.8.97.206";
 
 WiFiClient espClient;
 PubSubClient client(espClient);
