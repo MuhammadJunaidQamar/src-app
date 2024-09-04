@@ -4,46 +4,47 @@
 //using ESP32, ESP32 CAM or ESP8266 microcontroller
 #include <WiFi.h>
 #include <WiFiMulti.h>
-#include <PubSubClient.h>
- 
-// Update these with values suitable for your network.
- 
 WiFiMulti WiFiMulti;
-const char* ssid = "PTCL--KAMRAN";
-const char* password = "19691978";
-const char* mqtt_server = "192.168.10.12";
- 
+
+#include <PubSubClient.h>
+
+// Update these with values suitable for your network.
+
+const char* ssid = "HUAWEI-7sz5";
+const char* password = "3gwpc2BR";
+const char* mqtt_server = "192.168.18.33";
+
 WiFiClient espClient;
 PubSubClient client(espClient);
 unsigned long lastMsg = 0;
 #define MSG_BUFFER_SIZE	(50)
 char msg[MSG_BUFFER_SIZE];
 int value = 0;
- 
+
 void setup_wifi() {
- 
+
   delay(10);
   // We start by connecting to a WiFi network
   Serial.println();
   Serial.print("Connecting to ");
   Serial.println(ssid);
- 
+
   WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
- 
+
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
     Serial.print(".");
   }
- 
+
   randomSeed(micros());
- 
+
   Serial.println("");
   Serial.println("WiFi connected");
   Serial.println("IP address: ");
   Serial.println(WiFi.localIP());
 }
- 
+
 void callback(char* topic, byte* payload, unsigned int length) {
   Serial.print("Message arrived [");
   Serial.print(topic);
@@ -52,9 +53,9 @@ void callback(char* topic, byte* payload, unsigned int length) {
     Serial.print((char)payload[i]);
   }
   Serial.println();
- 
+
 }
- 
+
 void reconnect() {
   // Loop until we're reconnected
   while (!client.connected()) {
@@ -78,21 +79,21 @@ void reconnect() {
     }
   }
 }
- 
+
 void setup() {
   Serial.begin(9600);
   setup_wifi();
   client.setServer(mqtt_server, 1883);
   client.setCallback(callback);
 }
- 
+
 void loop() {
- 
+
   if (!client.connected()) {
     reconnect();
   }
   client.loop();
- 
+
   unsigned long now = millis();
   if (now - lastMsg > 2000) {
     lastMsg = now;
