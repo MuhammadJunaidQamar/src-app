@@ -26,7 +26,7 @@ namespace src.Controllers
         // This method is triggered when the server receives a message from a client.
         public Task OnMessageReceived(InterceptingPublishEventArgs eventArgs)
         {
-            var payload = eventArgs.ApplicationMessage.Payload;
+            var payload = eventArgs.ApplicationMessage.PayloadSegment;
             var message = Encoding.UTF8.GetString(payload);
 
             Console.WriteLine($"Message received on topic '{eventArgs.ApplicationMessage.Topic}': {message}");
