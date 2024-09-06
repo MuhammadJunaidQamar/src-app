@@ -28,6 +28,8 @@ namespace src.Services
                     });
 
                     webBuilder.UseStartup<StartUp>();
+
+                    webBuilder.UseUrls("http://localhost:5000");
                 });
 
             return host.RunConsoleAsync();
