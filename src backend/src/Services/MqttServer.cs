@@ -10,19 +10,9 @@
 // ReSharper disable EmptyConstructor
 // ReSharper disable MemberCanBeMadeStatic.Local
 
-using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
-using MQTTnet;
 using MQTTnet.AspNetCore;
-using MQTTnet.Server;
-using src.Controllers;
-using System;
-using System.Text;
-using System.Threading.Tasks;
 
-namespace MQTTnet.Samples.Server
+namespace src.Services
 {
     public static class Server_ASP_NET_Samples
     {
@@ -37,7 +27,9 @@ namespace MQTTnet.Samples.Server
                         o.ListenAnyIP(5000);
                     });
 
-                    webBuilder.UseStartup<src.StartUp>();
+                    webBuilder.UseStartup<StartUp>();
+
+                    webBuilder.UseUrls("http://localhost:5000");
                 });
 
             return host.RunConsoleAsync();

@@ -1,12 +1,12 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using MQTTnet.Server;
+using src.Models;
 using System.Text;
 
 namespace src.Controllers
 {
     public class MqttController : Controller
     {
-
         public MqttController()
         {
         }
@@ -26,10 +26,10 @@ namespace src.Controllers
         // This method is triggered when the server receives a message from a client.
         public Task OnMessageReceived(InterceptingPublishEventArgs eventArgs)
         {
-            var payload = eventArgs.ApplicationMessage.Payload;
-            var message = Encoding.UTF8.GetString(payload);
+            var payload = eventArgs.ApplicationMessage.PayloadSegment;
+            LastMessageModel.LastMessage = Encoding.UTF8.GetString(payload);
 
-            Console.WriteLine($"Message received on topic '{eventArgs.ApplicationMessage.Topic}': {message}");
+            Console.WriteLine($"Message received on topic '{eventArgs.ApplicationMessage.Topic}': {LastMessageModel.LastMessage}");
             return Task.CompletedTask;
         }
     }
