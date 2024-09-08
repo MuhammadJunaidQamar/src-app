@@ -30,6 +30,7 @@ class _LiveLineChartState extends State<LiveLineChart> {
     _timer = Timer.periodic(Duration(seconds: 1), (timer) async {
       try {
         model = await ViewModel.fetchWorldStates(type);
+        print(model);
       } catch (e) {
         if (kDebugMode) {
           print('Error: $e');

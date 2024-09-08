@@ -19,8 +19,6 @@ class ViewModel {
       }
 
       if (response.statusCode == 200) {
-        // String cleanedResponse = response.body.trim();
-        // print(cleanedResponse);
         try {
           var dataFromBackend = jsonDecode(response.body);
           if (dataFromBackend == null || dataFromBackend.isEmpty) {

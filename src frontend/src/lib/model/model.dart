@@ -21,7 +21,7 @@ class Model {
     if (kDebugMode) {
       print(json);
     }
-    temperature = json['Temperature'];
+    temperature = json['temperature'];
     // altitude = json['Altitude'];
   }
 
