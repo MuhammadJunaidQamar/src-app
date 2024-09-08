@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.OpenApi.Any;
 using src.Models;
 
 namespace src.Controllers
@@ -9,13 +10,17 @@ namespace src.Controllers
     {
         // Expose an endpoint to retrieve the latest message
         [HttpGet("GetLatestData")]
-        public IActionResult GetLatestMessage()
+        public IActionResult GetLatestMessage(string Type)
         {
-            if (!string.IsNullOrEmpty(LastMessageModel.LastMessage))
+            if (Type == null)
+                return StatusCode(StatusCodes.Status400BadRequest, "Data not specified");
+
+            if (!string.IsNullOrEmpty(LastMessageModel.LastMessage) && Type == "temperature")
             {
-                return Ok(LastMessageModel.LastMessage);
+                return Ok("No message");
             }
-            return Ok(); // No message available
+            LastMessageModel.LastMessage = "Esp32 not online";
+            return Ok(LastMessageModel.LastMessage); 
         }
     }
 }
