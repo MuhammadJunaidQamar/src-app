@@ -15,12 +15,18 @@ namespace src.Controllers
             if (Type == null)
                 return StatusCode(StatusCodes.Status400BadRequest, "Data not specified");
 
+            DataResponse responseBody = new();
+
             if (!string.IsNullOrEmpty(LastMessageModel.LastMessage) && Type == "temperature")
             {
-                return Ok("No message");
+                responseBody.Message = LastMessageModel.LastMessage;
+                return Ok(responseBody);
             }
+            
             LastMessageModel.LastMessage = "Esp32 not online";
-            return Ok(LastMessageModel.LastMessage); 
+            
+            responseBody.Message = LastMessageModel.LastMessage;
+            return Ok(responseBody);
         }
     }
 }
