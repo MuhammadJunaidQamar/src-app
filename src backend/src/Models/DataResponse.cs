@@ -2,6 +2,6 @@
 {
     public class DataResponse
     {
-        public string Message { get; set; }
+        public string Temperature { get; set; }
     }
 }

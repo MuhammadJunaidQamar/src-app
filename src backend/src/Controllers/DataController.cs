@@ -19,13 +19,13 @@ namespace src.Controllers
 
             if (!string.IsNullOrEmpty(LastMessageModel.LastMessage) && Type == "temperature")
             {
-                responseBody.Message = LastMessageModel.LastMessage;
+                responseBody.Temperature = LastMessageModel.LastMessage;
                 return Ok(responseBody);
             }
             
             LastMessageModel.LastMessage = "Esp32 not online";
             
-            responseBody.Message = LastMessageModel.LastMessage;
+            responseBody.Temperature = LastMessageModel.LastMessage;
             return Ok(responseBody);
         }
     }
