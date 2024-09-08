@@ -12,6 +12,13 @@ const defaultPadding = 20.0;
 //   RouteName.geolocationscreen,
 // ];
 
+class Constants {
+  static const String baseUrl = 'http://10.0.2.2:5000';
+  static const String getDataUrl = '/api/Data/GetLatestData';
+  static const String postDataUrl = '';
+  static const String deleteDataUrl = '';
+}
+
 const pages = [
   DashboardWidget(),
   OrientationScreen(),
@@ -20,6 +27,7 @@ const pages = [
 
 class AppText {
   static const appName = 'Space Research Center';
+  static const String appVersion = '';
 }
 
 extension ColorExtension on Color {

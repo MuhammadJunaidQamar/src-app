@@ -4,9 +4,14 @@ import 'package:src/data/line_chart_data.dart';
 import 'package:src/utils/const/constants.dart';
 import 'package:src/widgets/custom_card_widget.dart';
 
-class TemperatureGraph extends StatelessWidget {
-  const TemperatureGraph({super.key});
+class TemperatureGraph extends StatefulWidget {
+  TemperatureGraph({super.key});
 
+  @override
+  State<TemperatureGraph> createState() => _TemperatureGraphState();
+}
+
+class _TemperatureGraphState extends State<TemperatureGraph> {
   @override
   Widget build(BuildContext context) {
     final data = LineData();
@@ -14,7 +19,7 @@ class TemperatureGraph extends StatelessWidget {
       color: Color.fromARGB(255, 27, 35, 57),
       child: Column(
         children: [
-          Text('Temperature'),
+          Text('T'),
           SizedBox(
             height: 20,
           ),
