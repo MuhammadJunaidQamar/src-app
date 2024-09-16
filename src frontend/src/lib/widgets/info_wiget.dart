@@ -1,15 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:src/charts/DarkThemeLineChart.dart';
 import 'package:src/charts/altitude_chart.dart';
-import 'package:src/charts/dark2.dart';
+import 'package:src/charts/line_chart_widget.dart';
 import 'package:src/charts/pressure_chart.dart';
 import 'package:src/charts/sample4.dart';
 import 'package:src/charts/sample5.dart';
-import 'package:src/charts/sample9.dart';
 import 'package:src/charts/sample_chart.dart';
 import 'package:src/charts/temperature_chart.dart';
 import 'package:src/charts/temperature_graph.dart';
 import 'package:src/utils/responsive.dart';
+import 'package:src/widgets/custom_card_widget2.dart';
 
 class InfoWidget extends StatelessWidget {
   const InfoWidget({super.key});
@@ -27,8 +26,9 @@ class InfoWidget extends StatelessWidget {
             NeverScrollableScrollPhysics(), // Prevents nested scrolling issues
 
         children: <Widget>[
-          LiveLineChart(),
-          DarkThemeLineChart(),
+          LineChartWidget(
+            type: 'temperature',
+          ),
           TemperatureGraph(),
           TemperatureChart(),
           AltitudeChart(),
@@ -36,7 +36,6 @@ class InfoWidget extends StatelessWidget {
           LineChartSample6(),
           LineChartSample4(),
           LineChartSample5(),
-          LineChartSample9(),
           // Add more widgets if needed
         ],
       ),

@@ -1,7 +1,9 @@
+import 'dart:ffi';
+
 import 'package:flutter/foundation.dart';
 
 class Model {
-  String? temperature;
+  double? temperature;
   // String? altitude;
   String? left;
   String? right;
@@ -21,7 +23,13 @@ class Model {
     if (kDebugMode) {
       print(json);
     }
-    temperature = json['temperature'];
+    if (json['Temperature'] is int) {
+      temperature = json['Temperature'].toDouble();
+    } else if (json['Temperature'] is double) {
+      temperature = json['Temperature'];
+    } else {
+      throw ArgumentError('Unsupported data type');
+    }
     // altitude = json['Altitude'];
   }
 
@@ -32,5 +40,14 @@ class Model {
     data['Up'] = up;
     data['Down'] = down;
     return data;
+  }
+
+  dynamic getProperty(String key) {
+    switch (key) {
+      case 'temperature':
+        return temperature;
+      default:
+        return 'Unknown property';
+    }
   }
 }

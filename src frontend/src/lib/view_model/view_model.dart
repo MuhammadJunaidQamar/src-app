@@ -9,7 +9,7 @@ class ViewModel {
     try {
       final String typeEncoded = Uri.encodeComponent(type);
       final String url =
-          '${Constants.baseUrl}${Constants.getDataUrl}?Type=$typeEncoded';
+          '${Constants.baseUrl}${Constants.getDataUrl}?dataType=$typeEncoded';
       final response = await http.get(Uri.parse(url));
 
       if (kDebugMode) {
@@ -24,7 +24,9 @@ class ViewModel {
           if (dataFromBackend == null || dataFromBackend.isEmpty) {
             throw Exception('No data found.');
           }
-          return Model.fromJson(dataFromBackend);
+          var a = Model.fromJson(dataFromBackend);
+          print(a);
+          return a;
         } catch (e) {
           print('Error decoding JSON: $e');
           throw Exception('Error decoding JSON.');

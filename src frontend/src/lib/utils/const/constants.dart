@@ -1,4 +1,5 @@
 import 'dart:io' show Platform;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:src/utils/routes_name.dart';
 import 'package:src/views/screens/dashboard_screen.dart';
@@ -14,9 +15,10 @@ const defaultPadding = 20.0;
 // ];
 
 class Constants {
-  static final String baseUrl =
-      Platform.isAndroid ? 'http://10.0.2.2:5000' : 'http://localhost:5000';
-  static const String getDataUrl = '/api/Data/GetLatestData';
+  static final String baseUrl = kIsWeb
+      ? 'http://localhost:5000'
+      : (Platform.isAndroid ? 'http://10.0.2.2:5000' : 'http://localhost:5000');
+  static const String getDataUrl = '/api/SensorData/GetLatestData';
   static const String postDataUrl = '';
   static const String deleteDataUrl = '';
 }
