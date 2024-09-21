@@ -3,17 +3,22 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:src/model/model.dart';
+import 'package:src/utils/const/constants.dart';
 import 'package:src/view_model/view_model.dart';
 
-class LineChartWidget extends StatefulWidget {
+class LineChartWidget2 extends StatefulWidget {
   final String type;
-  const LineChartWidget({super.key, required this.type});
+  const LineChartWidget2({super.key, required this.type});
 
   @override
-  State<LineChartWidget> createState() => _LineChartWidgetState();
+  State<LineChartWidget2> createState() => _LineChartWidget2State();
 }
 
-class _LineChartWidgetState extends State<LineChartWidget> {
+class _LineChartWidget2State extends State<LineChartWidget2> {
+  List<Color> gradientColors = [
+    AppColors.contentColorCyan,
+    AppColors.contentColorBlue,
+  ];
   final List<FlSpot> _spots = [];
   late Timer _timer;
   int numberOfValuesShown = 10;
@@ -45,29 +50,27 @@ class _LineChartWidgetState extends State<LineChartWidget> {
     _timer = Timer.periodic(Duration(seconds: 1), (timer) async {
       try {
         final fetchedModel = await ViewModel.fetchWorldStates(widget.type);
-        setState(
-          () {
-            model = fetchedModel;
-            _spots.add(FlSpot(_xValue, model.getProperty(widget.type) ?? 0));
-            _xValue += 1;
-            _currentTime =
-                DateTime.now().toLocal().toString().split(' ')[1].split('.')[0];
-            // final elapsed = DateTime.now().difference(_startTime);
-            // if (elapsed.inSeconds < 60) {
-            //   _xValue = elapsed.inSeconds.toDouble();
-            //   timeUnit = 'seconds';
-            // } else if (elapsed.inMinutes < 60) {
-            //   _xValue = elapsed.inMinutes.toDouble();
-            //   timeUnit = 'minutes';
-            // } else {
-            //   _xValue = elapsed.inHours.toDouble();
-            //   timeUnit = 'hours';
-            // }
-            if (_spots.length > numberOfValuesShown) {
-              _spots.removeAt(0);
-            }
-          },
-        );
+        setState(() {
+          model = fetchedModel;
+          _spots.add(FlSpot(_xValue, model.getProperty(widget.type) ?? 0));
+          _xValue += 1;
+          _currentTime =
+              DateTime.now().toLocal().toString().split(' ')[1].split('.')[0];
+          // final elapsed = DateTime.now().difference(_startTime);
+          // if (elapsed.inSeconds < 60) {
+          //   _xValue = elapsed.inSeconds.toDouble();
+          //   timeUnit = 'seconds';
+          // } else if (elapsed.inMinutes < 60) {
+          //   _xValue = elapsed.inMinutes.toDouble();
+          //   timeUnit = 'minutes';
+          // } else {
+          //   _xValue = elapsed.inHours.toDouble();
+          //   timeUnit = 'hours';
+          // }
+          if (_spots.length > numberOfValuesShown) {
+            _spots.removeAt(0);
+          }
+        });
       } catch (e) {
         if (kDebugMode) {
           print('Error: $e');
@@ -138,7 +141,7 @@ class _LineChartWidgetState extends State<LineChartWidget> {
   @override
   Widget build(BuildContext context) {
     return AspectRatio(
-      aspectRatio: 2.5,
+      aspectRatio: 1.7,
       child: Padding(
         padding: const EdgeInsets.symmetric(
           vertical: 10,
@@ -150,20 +153,18 @@ class _LineChartWidgetState extends State<LineChartWidget> {
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(32),
               ),
-              color: const Color(0xff020227),
+              color: Color.fromARGB(255, 2, 12, 41),
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Center(
-                      child: Text(
-                        widget.type,
-                        style: TextStyle(
-                          color: Color(0xff68737d),
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
+                    Text(
+                      widget.type,
+                      style: TextStyle(
+                        color: Color(0xff68737d),
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
                       ),
                     ),
                     SizedBox(height: 16),
@@ -187,16 +188,6 @@ class _LineChartWidgetState extends State<LineChartWidget> {
                               color: const Color(0xff37434d),
                               strokeWidth: 1,
                             ),
-                            // checkToShowHorizontalLine: (value) {
-                            //   final intValue =
-                            //       reverseY(value, minSpotY, maxSpotY).toInt();
-
-                            //   if (intValue == (maxSpotY + minSpotY).toInt()) {
-                            //     return false;
-                            //   }
-
-                            //   return true;
-                            // },
                             getDrawingVerticalLine: (value) => FlLine(
                               color: const Color(0xff37434d),
                               strokeWidth: 1,
@@ -205,7 +196,9 @@ class _LineChartWidgetState extends State<LineChartWidget> {
                           borderData: FlBorderData(
                             show: true,
                             border: Border.all(
-                                color: const Color(0xff37434d), width: 1),
+                              color: const Color(0xff37434d),
+                              width: 1,
+                            ),
                           ),
                           lineTouchData: LineTouchData(
                             touchTooltipData: LineTouchTooltipData(
@@ -280,20 +273,17 @@ class _LineChartWidgetState extends State<LineChartWidget> {
                               spots: _spots,
                               isCurved: true,
                               gradient: LinearGradient(
-                                colors: [
-                                  const Color(0xff23b6e6),
-                                  const Color(0xff02d39a),
-                                ],
+                                colors: gradientColors,
                               ),
                               barWidth: 5,
+                              isStrokeCapRound: true,
                               dotData: FlDotData(show: false),
                               belowBarData: BarAreaData(
                                 show: true,
                                 gradient: LinearGradient(
-                                  colors: [
-                                    const Color(0xff23b6e6).withOpacity(0.3),
-                                    const Color(0xff02d39a).withOpacity(0.3),
-                                  ],
+                                  colors: gradientColors
+                                      .map((color) => color.withOpacity(0.3))
+                                      .toList(),
                                 ),
                               ),
                             ),

@@ -24,22 +24,26 @@ class ViewModel {
           if (dataFromBackend == null || dataFromBackend.isEmpty) {
             throw Exception('No data found.');
           }
-          var a = Model.fromJson(dataFromBackend);
-          print(a);
-          return a;
+          return Model.fromJson(dataFromBackend);
         } catch (e) {
-          print('Error decoding JSON: $e');
+          if (kDebugMode) {
+            print('Error decoding JSON: $e');
+          }
           throw Exception('Error decoding JSON.');
         }
       } else {
-        throw Exception(
-            'Request failed with status: ${response.statusCode}. Response body: ${response.body}');
+        String errorMessage =
+            'Request failed with status: ${response.statusCode} - Response body: ${response.body}';
+        // if (kDebugMode) {
+        //   print(errorMessage);
+        // }
+        throw Exception(errorMessage);
       }
     } catch (e) {
       if (kDebugMode) {
-        print('Error occurred: $e');
+        print('Network error occurred: $e');
       }
-      throw Exception('An error occurred: ${e}');
+      throw Exception(e);
     }
   }
 
