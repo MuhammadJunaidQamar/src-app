@@ -108,13 +108,13 @@ class _LineChart extends StatelessWidget {
   double getMinY(List<FlSpot> spots) {
     if (spots.isEmpty) return 0;
     final minY = spots.map((spot) => spot.y).reduce((a, b) => a < b ? a : b);
-    return minY;
+    return minY - 1;
   }
 
   double getMaxY(List<FlSpot> spots) {
     if (spots.isEmpty) return 10;
     final maxY = spots.map((spot) => spot.y).reduce((a, b) => a > b ? a : b);
-    return maxY;
+    return maxY + 1;
   }
 
   double getMaxX(List<FlSpot> spots) {
