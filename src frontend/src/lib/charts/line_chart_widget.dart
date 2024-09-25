@@ -52,17 +52,6 @@ class _LineChartWidgetState extends State<LineChartWidget> {
             _xValue += 1;
             _currentTime =
                 DateTime.now().toLocal().toString().split(' ')[1].split('.')[0];
-            // final elapsed = DateTime.now().difference(_startTime);
-            // if (elapsed.inSeconds < 60) {
-            //   _xValue = elapsed.inSeconds.toDouble();
-            //   timeUnit = 'seconds';
-            // } else if (elapsed.inMinutes < 60) {
-            //   _xValue = elapsed.inMinutes.toDouble();
-            //   timeUnit = 'minutes';
-            // } else {
-            //   _xValue = elapsed.inHours.toDouble();
-            //   timeUnit = 'hours';
-            // }
             if (_spots.length > numberOfValuesShown) {
               _spots.removeAt(0);
             }

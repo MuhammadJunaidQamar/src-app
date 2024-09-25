@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:src/charts/altitude_chart.dart';
+import 'package:src/charts/chart_widget.dart';
 import 'package:src/charts/line_chart_widget.dart';
 import 'package:src/charts/line_chart_widget2.dart';
 import 'package:src/charts/line_chart_widget3.dart';
 import 'package:src/charts/pressure_chart.dart';
 import 'package:src/charts/sample5.dart';
 import 'package:src/charts/temperature_graph.dart';
+import 'package:src/utils/const/constants.dart';
 import 'package:src/utils/responsive.dart';
 
 class InfoWidget extends StatelessWidget {
@@ -22,8 +23,25 @@ class InfoWidget extends StatelessWidget {
         shrinkWrap: true,
         physics: NeverScrollableScrollPhysics(),
         children: <Widget>[
-          AltitudeChart(
+          ChartWidget(
+            type: 'Temperature',
+            lineColour: AppColors.contentColorPink,
+            unit: '°C',
+          ),
+          ChartWidget(
+            type: 'Pressure',
+            lineColour: AppColors.contentColorCyan,
+            unit: ' Pa',
+          ),
+          ChartWidget(
+            type: 'Altitude',
+            lineColour: AppColors.contentColorGreen,
+            unit: 'm',
+          ),
+          ChartWidget(
             type: 'SeaPressure',
+            lineColour: AppColors.contentColorBlue,
+            unit: 'Pa',
           ),
           LineChartWidget(
             type: 'Pressure',

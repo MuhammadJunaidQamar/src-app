@@ -5,12 +5,20 @@ import 'package:flutter/material.dart';
 import 'package:src/model/model.dart';
 import 'package:src/utils/const/constants.dart';
 import 'package:src/view_model/view_model.dart';
+import 'package:src/widgets/custom_card_widget.dart';
 
 class _LineChart extends StatelessWidget {
   final List<FlSpot> spots;
+  final Color lineColor;
   final String type;
+  final String unit;
 
-  const _LineChart({required this.spots, required this.type});
+  const _LineChart({
+    required this.spots,
+    required this.type,
+    required this.lineColor,
+    required this.unit,
+  });
 
   final int numberOfValuesShown = 9;
 
@@ -31,16 +39,15 @@ class _LineChart extends StatelessWidget {
         borderData: FlBorderData(
           show: true,
           border: Border(
-            bottom:
-                BorderSide(color: AppColors.primary.withOpacity(0.2), width: 4),
+            bottom: BorderSide(color: lineColor.withOpacity(0.2), width: 4),
             left: const BorderSide(color: Colors.transparent),
           ),
         ),
         lineBarsData: [
           LineChartBarData(
             isCurved: true,
-            color: AppColors.contentColorGreen,
-            barWidth: 8,
+            color: lineColor,
+            barWidth: 4,
             isStrokeCapRound: true,
             dotData: const FlDotData(show: false),
             belowBarData: BarAreaData(show: false),
@@ -60,7 +67,7 @@ class _LineChart extends StatelessWidget {
   SideTitles bottomTitles(List<FlSpot> spots) => SideTitles(
         showTitles: true,
         reservedSize: 32,
-        interval: 5,
+        interval: 3,
         getTitlesWidget: (double value, TitleMeta meta) {
           const style = TextStyle(
             fontWeight: FontWeight.bold,
@@ -81,40 +88,44 @@ class _LineChart extends StatelessWidget {
         },
       );
 
-  SideTitles leftTitles(List<FlSpot> spots) => SideTitles(
-        showTitles: true,
-        reservedSize: 40,
-        interval: calculateYInterval(getMinY(spots), getMaxY(spots)),
-        getTitlesWidget: (double value, TitleMeta meta) {
-          const style = TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 14,
-          );
+  SideTitles leftTitles(List<FlSpot> spots) {
+    final double minY = getMinY(spots);
+    final double maxY = getMaxY(spots);
+    final double interval = calculateYInterval(minY, maxY);
+    int size = maxY.toInt().toString().length + unit.length;
 
-          double minY = getMinY(spots);
-          double maxY = getMaxY(spots);
+    return SideTitles(
+      showTitles: true,
+      // interval: interval,
+      getTitlesWidget: (double value, TitleMeta meta) {
+        const style = TextStyle(
+          fontWeight: FontWeight.bold,
+          fontSize: 14,
+        );
 
-          if (value == minY || value == maxY) {
-            return const Text('');
-          }
+        if (value == minY || value == maxY) {
+          return const Text('');
+        }
 
-          return Text(
-            '$value°C',
-            style: style,
-          );
-        },
-      );
+        return Text(
+          '${value.toInt()}$unit',
+          style: style,
+        );
+      },
+      reservedSize: size * 10,
+    );
+  }
 
   double getMinY(List<FlSpot> spots) {
     if (spots.isEmpty) return 0;
     final minY = spots.map((spot) => spot.y).reduce((a, b) => a < b ? a : b);
-    return minY - 1;
+    return minY - 2;
   }
 
   double getMaxY(List<FlSpot> spots) {
     if (spots.isEmpty) return 10;
     final maxY = spots.map((spot) => spot.y).reduce((a, b) => a > b ? a : b);
-    return maxY + 1;
+    return maxY + 2;
   }
 
   double getMaxX(List<FlSpot> spots) {
@@ -131,25 +142,37 @@ class _LineChart extends StatelessWidget {
 
   double calculateYInterval(double minY, double maxY) {
     final range = maxY - minY;
-    if (range < 5) {
-      return 1;
-    } else if (range < 20) {
-      return 2;
+
+    if (range == 0) {
+      return 1.0;
+    }
+
+    final scaleFactor = range / 10;
+
+    if (scaleFactor <= 1) {
+      return 1.0;
     } else {
-      return 5;
+      final interval = (scaleFactor / 5).round() * 5;
+      return interval > 0 ? interval.toDouble() : 1.0;
     }
   }
 }
 
-class AltitudeChart extends StatefulWidget {
+class ChartWidget extends StatefulWidget {
   final String type;
-  const AltitudeChart({super.key, required this.type});
+  final Color lineColour;
+  final String unit;
+  const ChartWidget(
+      {super.key,
+      required this.type,
+      required this.lineColour,
+      required this.unit});
 
   @override
-  State<StatefulWidget> createState() => AltitudeChartState();
+  State<StatefulWidget> createState() => ChartWidgetState();
 }
 
-class AltitudeChartState extends State<AltitudeChart> {
+class ChartWidgetState extends State<ChartWidget> {
   late Timer _timer;
   List<FlSpot> _spots = [];
   int numberOfValuesShown = 10;
@@ -218,7 +241,7 @@ class AltitudeChartState extends State<AltitudeChart> {
               Text(
                 widget.type,
                 style: TextStyle(
-                  color: AppColors.primary,
+                  color: widget.lineColour, //AppColors.primary,
                   fontSize: 32,
                   fontWeight: FontWeight.bold,
                   letterSpacing: 2,
@@ -232,6 +255,8 @@ class AltitudeChartState extends State<AltitudeChart> {
                   child: _LineChart(
                     spots: _spots,
                     type: widget.type,
+                    lineColor: widget.lineColour,
+                    unit: widget.unit,
                   ),
                 ),
               ),

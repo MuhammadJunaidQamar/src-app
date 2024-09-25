@@ -16,7 +16,6 @@ class _TemperatureGraphState extends State<TemperatureGraph> {
   Widget build(BuildContext context) {
     final data = LineData();
     return CustomCard(
-      color: Color.fromARGB(255, 27, 35, 57),
       child: Column(
         children: [
           Text('T'),
