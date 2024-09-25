@@ -28,12 +28,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Scaffold(
       endDrawer: Responsive.isMobile(context)
-          ? SizedBox(
-              width: 250,
-              child: SingleChildScrollView(
-                scrollDirection: Axis.vertical,
-                child: InfoWidget(),
-              ),
+          ? SingleChildScrollView(
+              scrollDirection: Axis.vertical,
+              child: InfoWidget(),
             )
           : null,
       drawer: !isDesktop

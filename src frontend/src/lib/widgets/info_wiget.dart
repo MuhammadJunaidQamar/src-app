@@ -21,40 +21,40 @@ class InfoWidget extends StatelessWidget {
         crossAxisSpacing: 8.0,
         mainAxisSpacing: 8.0,
         shrinkWrap: true,
-        physics: NeverScrollableScrollPhysics(),
+        physics: const NeverScrollableScrollPhysics(),
         children: <Widget>[
-          ChartWidget(
+          const ChartWidget(
             type: 'Temperature',
-            lineColour: AppColors.contentColorPink,
+            lineColor: AppColors.contentColorPink,
             unit: '°C',
           ),
-          ChartWidget(
+          const ChartWidget(
             type: 'Pressure',
-            lineColour: AppColors.contentColorCyan,
+            lineColor: AppColors.contentColorCyan,
             unit: ' Pa',
           ),
-          ChartWidget(
+          const ChartWidget(
             type: 'Altitude',
-            lineColour: AppColors.contentColorGreen,
+            lineColor: AppColors.contentColorGreen,
             unit: 'm',
           ),
-          ChartWidget(
+          const ChartWidget(
             type: 'SeaPressure',
-            lineColour: AppColors.contentColorBlue,
+            lineColor: AppColors.contentColorBlue,
             unit: 'Pa',
           ),
-          LineChartWidget(
+          const LineChartWidget(
             type: 'Pressure',
           ),
-          LineChartWidget2(
+          const LineChartWidget2(
             type: 'Altitude',
           ),
-          LineChart3(
+          const LineChart3(
             type: 'SeaPressure',
           ),
           TemperatureGraph(),
-          PressureChart(),
-          LineChartSample5(),
+          const PressureChart(),
+          const LineChartSample5(),
         ],
       ),
     );

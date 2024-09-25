@@ -168,12 +168,12 @@ class _LineChart extends StatelessWidget {
 
 class ChartWidget extends StatefulWidget {
   final String type;
-  final Color lineColour;
+  final Color lineColor;
   final String unit;
   const ChartWidget(
       {super.key,
       required this.type,
-      required this.lineColour,
+      required this.lineColor,
       required this.unit});
 
   @override
@@ -249,7 +249,7 @@ class ChartWidgetState extends State<ChartWidget> {
               Text(
                 widget.type,
                 style: TextStyle(
-                  color: widget.lineColour, //AppColors.primary,
+                  color: widget.lineColor, //AppColors.primary,
                   fontSize: 32,
                   fontWeight: FontWeight.bold,
                   letterSpacing: 2,
@@ -263,7 +263,7 @@ class ChartWidgetState extends State<ChartWidget> {
                   child: _LineChart(
                     spots: _spots,
                     type: widget.type,
-                    lineColor: widget.lineColour,
+                    lineColor: widget.lineColor,
                     unit: widget.unit,
                   ),
                 ),

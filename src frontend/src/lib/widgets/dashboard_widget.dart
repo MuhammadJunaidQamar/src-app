@@ -17,7 +17,7 @@ class DashboardWidget extends StatelessWidget {
             flex: 75,
             child: Column(
               children: [
-                HeaderWidget(),
+                const HeaderWidget(),
                 SizedBox(height: 18),
                 Expanded(
                   child: !Responsive.isTablet(context)
