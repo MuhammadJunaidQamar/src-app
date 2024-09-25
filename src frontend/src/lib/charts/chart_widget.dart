@@ -64,6 +64,13 @@ class _LineChart extends StatelessWidget {
     );
   }
 
+  String _formatTime(int totalSeconds) {
+    int hours = totalSeconds ~/ 3600;
+    int minutes = (totalSeconds % 3600) ~/ 60;
+    int seconds = totalSeconds % 60;
+    return '${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+  }
+
   SideTitles bottomTitles(List<FlSpot> spots) => SideTitles(
         showTitles: true,
         reservedSize: 32,
@@ -81,8 +88,9 @@ class _LineChart extends StatelessWidget {
             return const Text('');
           }
 
+          String formattedTime = _formatTime(value.toInt());
           return Text(
-            value.toInt().toString(),
+            formattedTime,
             style: style,
           );
         },
