@@ -4,14 +4,9 @@ import 'package:src/data/line_chart_data.dart';
 import 'package:src/utils/const/constants.dart';
 import 'package:src/widgets/custom_card_widget.dart';
 
-class TemperatureGraph extends StatefulWidget {
-  TemperatureGraph({super.key});
+class TemperatureGraph extends StatelessWidget {
+  const TemperatureGraph({super.key});
 
-  @override
-  State<TemperatureGraph> createState() => _TemperatureGraphState();
-}
-
-class _TemperatureGraphState extends State<TemperatureGraph> {
   @override
   Widget build(BuildContext context) {
     final data = LineData();

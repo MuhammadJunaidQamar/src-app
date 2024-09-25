@@ -3,8 +3,12 @@ import 'package:src/theme/theme_manager.dart';
 import 'package:src/utils/const/constants.dart';
 import 'package:src/utils/routes.dart';
 import 'package:src/utils/routes_name.dart';
+import 'package:window_manager/window_manager.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await windowManager.ensureInitialized();
+  windowManager.setMinimumSize(const Size(600, 750));
   runApp(const MyApp());
 }
 

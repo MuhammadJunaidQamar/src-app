@@ -182,7 +182,7 @@ class ChartWidget extends StatefulWidget {
 
 class ChartWidgetState extends State<ChartWidget> {
   late Timer _timer;
-  List<FlSpot> _spots = [];
+  final _spots = <FlSpot>[];
   int numberOfValuesShown = 10;
   String timeUnit = "seconds";
   double _xValue = 0;
