@@ -1,14 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:src/data/chart_data.dart';
 import 'package:src/utils/responsive.dart';
-import 'package:src/model/chart_model.dart'; // Import the new model
 
 class InfoWidget extends StatelessWidget {
   const InfoWidget({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final chartData = ChartData().charts; // Use the ChartData
+    final chartData = ChartData().charts;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12.0),

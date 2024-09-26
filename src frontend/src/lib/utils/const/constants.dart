@@ -5,7 +5,6 @@ import 'package:src/utils/routes_name.dart';
 import 'package:src/views/screens/dashboard_screen.dart';
 import 'package:src/views/screens/geo_location_screen.dart';
 import 'package:src/views/screens/orientation_screen.dart';
-import 'package:src/widgets/dashboard_widget.dart';
 
 const defaultPadding = 20.0;
 // const pages = [
@@ -24,7 +23,7 @@ class Constants {
 }
 
 const pages = [
-  DashboardWidget(),
+  DashboardScreen(),
   OrientationScreen(),
   GeoLocationScreen(),
 ];

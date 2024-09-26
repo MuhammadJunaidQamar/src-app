@@ -3,9 +3,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:src/model/model.dart';
-import 'package:src/utils/const/constants.dart';
 import 'package:src/view_model/view_model.dart';
-import 'package:src/widgets/custom_card_widget.dart';
 
 class _LineChart extends StatelessWidget {
   final List<FlSpot> spots;
@@ -104,7 +102,7 @@ class _LineChart extends StatelessWidget {
 
     return SideTitles(
       showTitles: true,
-      // interval: interval,
+      interval: interval,
       getTitlesWidget: (double value, TitleMeta meta) {
         const style = TextStyle(
           fontWeight: FontWeight.bold,

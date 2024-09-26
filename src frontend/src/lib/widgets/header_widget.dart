@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:src/utils/const/constants.dart';
 import 'package:src/utils/responsive.dart';
+import 'package:src/widgets/custom_card_widget.dart';
 
 class HeaderWidget extends StatelessWidget {
   const HeaderWidget({super.key});
@@ -12,9 +13,9 @@ class HeaderWidget extends StatelessWidget {
         if (!Responsive.isDesktop(context))
           Padding(
             padding: const EdgeInsets.only(right: 10.0),
-            child: InkWell(
-              onTap: () => Scaffold.of(context).openDrawer(),
-              child: Icon(
+            child: IconButton(
+              onPressed: () => Scaffold.of(context).openDrawer(),
+              icon: const Icon(
                 Icons.menu,
                 color: Colors.grey,
                 size: 25,
@@ -22,24 +23,8 @@ class HeaderWidget extends StatelessWidget {
             ),
           ),
         Expanded(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12.0),
-            child: Container(
-              decoration: BoxDecoration(
-                border: Border.all(
-                  width: 5,
-                  color: Theme.of(context).primaryColor,
-                ),
-                borderRadius: const BorderRadius.all(
-                  Radius.circular(12.0),
-                ),
-                color: AppColors.cardBackgroundColor,
-              ),
-              child: const Padding(
-                padding: EdgeInsets.symmetric(vertical: 10.0),
-                child: Center(child: Text(AppText.appName)),
-              ),
-            ),
+          child: CustomCard(
+            child: Text(AppText.appName),
           ),
         ),
         if (Responsive.isMobile(context))

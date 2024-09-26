@@ -1,8 +1,7 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:src/utils/const/constants.dart';
 import 'package:src/utils/responsive.dart';
-import 'package:src/widgets/dashboard_widget.dart';
 import 'package:src/widgets/info_wiget.dart';
 import 'package:src/widgets/side_menu_widget.dart';
 
@@ -27,10 +26,27 @@ class _HomeScreenState extends State<HomeScreen> {
     final isDesktop = Responsive.isDesktop(context);
 
     return Scaffold(
-      endDrawer: Responsive.isMobile(context)
-          ? SingleChildScrollView(
-              scrollDirection: Axis.vertical,
-              child: InfoWidget(),
+      endDrawer: Responsive.isMobile(context) // && pageIdx == 0
+          ? Stack(
+              alignment: AlignmentDirectional.topEnd,
+              children: [
+                const SingleChildScrollView(
+                  scrollDirection: Axis.vertical,
+                  child: Padding(
+                    padding: EdgeInsets.only(top: 56),
+                    child: InfoWidget(),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(top: 24, right: 19),
+                  child: IconButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: const Icon(
+                      Icons.cancel_outlined,
+                    ),
+                  ),
+                ),
+              ],
             )
           : null,
       drawer: !isDesktop

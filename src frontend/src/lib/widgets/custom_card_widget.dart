@@ -5,25 +5,32 @@ class CustomCard extends StatelessWidget {
   final Widget child;
   final Color? color;
   final EdgeInsetsGeometry? padding;
+  final EdgeInsetsGeometry? margin;
 
-  const CustomCard({super.key, this.color, this.padding, required this.child});
+  const CustomCard({
+    super.key,
+    this.color,
+    this.padding,
+    required this.child,
+    this.margin,
+  });
+
   @override
   Widget build(BuildContext context) {
     return Container(
-        margin: EdgeInsets.symmetric(vertical: 10),
-        decoration: BoxDecoration(
-          border: Border.all(
-            width: 5,
-            color: Theme.of(context).primaryColor,
-          ),
-          borderRadius: const BorderRadius.all(
-            Radius.circular(20.0),
-          ),
-          color: color ?? AppColors.cardBackgroundColor,
+      margin: margin ?? const EdgeInsets.symmetric(vertical: 5, horizontal: 10),
+      padding: padding ?? const EdgeInsets.all(10.0),
+      decoration: BoxDecoration(
+        border: Border.all(
+          width: 5,
+          color: Theme.of(context).primaryColor,
         ),
-        child: Padding(
-          padding: padding ?? const EdgeInsets.all(12.0),
-          child: child,
-        ));
+        borderRadius: const BorderRadius.all(
+          Radius.circular(20.0),
+        ),
+        color: color ?? AppColors.cardBackgroundColor,
+      ),
+      child: Center(child: child),
+    );
   }
 }

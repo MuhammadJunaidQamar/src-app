@@ -10,7 +10,7 @@ class DashboardWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.all(18.0),
+      padding: const EdgeInsets.symmetric(vertical: 18.0),
       child: Row(
         children: [
           Expanded(
@@ -22,7 +22,7 @@ class DashboardWidget extends StatelessWidget {
                 Expanded(
                   child: !Responsive.isTablet(context)
                       ? LiveCameraFeedWidget()
-                      : SingleChildScrollView(
+                      : const SingleChildScrollView(
                           scrollDirection: Axis.vertical,
                           child: Column(
                             children: [

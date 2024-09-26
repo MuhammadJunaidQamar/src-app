@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:src/utils/const/constants.dart';
+import 'package:src/widgets/custom_card_widget.dart';
+import 'package:src/widgets/header_widget.dart';
+import 'package:src/widgets/live_geo_location_widget.dart';
 
 class GeoLocationScreen extends StatelessWidget {
   const GeoLocationScreen({super.key});
@@ -7,21 +9,24 @@ class GeoLocationScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.all(12.0),
-      child: Expanded(
-        child: Container(
-          decoration: BoxDecoration(
-            border: Border.all(
-              width: 5,
-              color: Theme.of(context).primaryColor,
+      padding: const EdgeInsets.symmetric(vertical: 18.0),
+      child: Row(
+        children: [
+          Expanded(
+            flex: 75,
+            child: Column(
+              children: [
+                const HeaderWidget(),
+                SizedBox(height: 10),
+                Expanded(
+                  child: CustomCard(
+                    child: LiveGeoLocationWidget(),
+                  ),
+                ),
+              ],
             ),
-            borderRadius: BorderRadius.all(
-              Radius.circular(12.0),
-            ),
-            color: AppColors.cardBackgroundColor,
           ),
-          child: Center(child: Text('Geo Location')),
-        ),
+        ],
       ),
     );
   }

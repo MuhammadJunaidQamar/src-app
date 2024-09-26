@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:src/utils/responsive.dart';
-import 'package:src/widgets/dashboard_widget.dart';
+import 'package:src/widgets/custom_card_widget.dart';
+import 'package:src/widgets/header_widget.dart';
 import 'package:src/widgets/info_wiget.dart';
-import 'package:src/widgets/side_menu_widget.dart';
+import 'package:src/widgets/live_camera_feed_widget.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
@@ -10,31 +11,48 @@ class DashboardScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDesktop = Responsive.isDesktop(context);
-    return SafeArea(
+    final isTablet = Responsive.isTablet(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 18.0),
       child: Row(
         children: [
           Expanded(
-            flex: 7,
-            child: DashboardWidget(),
+            flex: 75,
+            child: Column(
+              children: [
+                const HeaderWidget(),
+                SizedBox(height: 10),
+                Expanded(
+                  child: !isTablet
+                      ? CustomCard(
+                          child: LiveCameraFeedWidget(),
+                        )
+                      : const SingleChildScrollView(
+                          scrollDirection: Axis.vertical,
+                          child: Column(
+                            children: [
+                              AspectRatio(
+                                aspectRatio: 16 / 9,
+                                child: CustomCard(
+                                  child: LiveCameraFeedWidget(),
+                                ),
+                              ),
+                              InfoWidget(),
+                            ],
+                          ),
+                        ),
+                ),
+              ],
+            ),
           ),
           if (isDesktop)
             Expanded(
-              flex: 3,
+              flex: 25,
               child: SingleChildScrollView(
+                scrollDirection: Axis.vertical,
                 child: InfoWidget(),
               ),
             ),
-          // if (Responsive.isTablet(context))
-          //   SingleChildScrollView(
-          //     scrollDirection: Axis.vertical,
-          //     child: Column(
-          //       children: [
-          //         DashboardWidget(),
-          //         SizedBox(height: 18),
-          //         InfoWidget(),
-          //       ],
-          //     ),
-          //   ),
         ],
       ),
     );

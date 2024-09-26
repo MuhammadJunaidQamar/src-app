@@ -1,27 +1,41 @@
 import 'package:flutter/material.dart';
-import 'package:src/utils/const/constants.dart';
+import 'package:src/widgets/custom_card_widget.dart';
+import 'package:src/widgets/header_widget.dart';
+import 'package:src/widgets/spatial_object_widget.dart';
 
 class OrientationScreen extends StatelessWidget {
   const OrientationScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    return OrientationLayout();
+  }
+}
+
+class OrientationLayout extends StatelessWidget {
+  const OrientationLayout({super.key});
+
+  @override
+  Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.all(12.0),
-      child: Expanded(
-        child: Container(
-          decoration: BoxDecoration(
-            border: Border.all(
-              width: 5,
-              color: Theme.of(context).primaryColor,
+      padding: const EdgeInsets.symmetric(vertical: 18.0),
+      child: Row(
+        children: [
+          Expanded(
+            flex: 75,
+            child: Column(
+              children: [
+                const HeaderWidget(),
+                SizedBox(height: 10),
+                Expanded(
+                  child: CustomCard(
+                    child: SpatialObjectWidget(),
+                  ),
+                ),
+              ],
             ),
-            borderRadius: BorderRadius.all(
-              Radius.circular(12.0),
-            ),
-            color: AppColors.cardBackgroundColor,
           ),
-          child: Center(child: Text('Orientation')),
-        ),
+        ],
       ),
     );
   }
