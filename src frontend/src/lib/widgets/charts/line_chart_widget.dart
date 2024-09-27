@@ -1,3 +1,4 @@
+import 'package:awesome_snackbar_content/awesome_snackbar_content.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -28,19 +29,6 @@ class _LineChartWidgetState extends State<LineChartWidget> {
     _startDataFeed();
   }
 
-  void _showSnackBar(String message) {
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(message),
-          duration: const Duration(microseconds: 500),
-          backgroundColor: Colors.red,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-    }
-  }
-
   void _startDataFeed() {
     _timer = Timer.periodic(Duration(seconds: 1), (timer) async {
       try {
@@ -61,7 +49,22 @@ class _LineChartWidgetState extends State<LineChartWidget> {
         if (kDebugMode) {
           print('Error: $e');
         }
-        _showSnackBar(e.toString());
+        SnackBar snackBar = SnackBar(
+          elevation: 0,
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: Colors.transparent,
+          content: AwesomeSnackbarContent(
+            title: 'On Snap!',
+            message: e.toString(),
+            contentType: ContentType.failure,
+          ),
+        );
+
+        if (mounted) {
+          ScaffoldMessenger.of(context)
+            ..hideCurrentSnackBar()
+            ..showSnackBar(snackBar);
+        }
       }
     });
   }

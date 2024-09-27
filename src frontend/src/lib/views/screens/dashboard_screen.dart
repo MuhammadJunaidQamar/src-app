@@ -13,7 +13,7 @@ class DashboardScreen extends StatelessWidget {
     final isDesktop = Responsive.isDesktop(context);
     final isTablet = Responsive.isTablet(context);
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 18.0),
+      padding: const EdgeInsets.only(top: 10.0),
       child: Row(
         children: [
           Expanded(
@@ -21,7 +21,6 @@ class DashboardScreen extends StatelessWidget {
             child: Column(
               children: [
                 const HeaderWidget(),
-                SizedBox(height: 10),
                 Expanded(
                   child: !isTablet
                       ? CustomCard(

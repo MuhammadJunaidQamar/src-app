@@ -25,53 +25,57 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final isDesktop = Responsive.isDesktop(context);
 
-    return Scaffold(
-      endDrawer: Responsive.isMobile(context) // && pageIdx == 0
-          ? Stack(
-              alignment: AlignmentDirectional.topEnd,
-              children: [
-                const SingleChildScrollView(
-                  scrollDirection: Axis.vertical,
-                  child: Padding(
-                    padding: EdgeInsets.only(top: 56),
-                    child: InfoWidget(),
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.only(top: 24, right: 19),
-                  child: IconButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    icon: const Icon(
-                      Icons.cancel_outlined,
+    return SafeArea(
+      child: Scaffold(
+        endDrawer: Responsive.isMobile(context) // && pageIdx == 0
+            ? Stack(
+                alignment: AlignmentDirectional.topEnd,
+                children: [
+                  const SingleChildScrollView(
+                    scrollDirection: Axis.vertical,
+                    child: Padding(
+                      padding: EdgeInsets.only(top: 56),
+                      child: InfoWidget(),
                     ),
                   ),
-                ),
-              ],
-            )
-          : null,
-      drawer: !isDesktop
-          ? SizedBox(
-              width: 250,
-              child: SideMenuWidget(
-                onPageSelected: _onPageSelected,
-              ),
-            )
-          : null,
-      body: SafeArea(
-        child: Row(
-          children: [
-            if (isDesktop)
-              Expanded(
-                flex: 2,
+                  Padding(
+                    padding: const EdgeInsets.only(
+                      top: 20,
+                    ),
+                    child: IconButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      icon: const Icon(
+                        Icons.cancel_outlined,
+                      ),
+                    ),
+                  ),
+                ],
+              )
+            : null,
+        drawer: !isDesktop
+            ? SizedBox(
+                width: 250,
                 child: SideMenuWidget(
                   onPageSelected: _onPageSelected,
                 ),
+              )
+            : null,
+        body: SafeArea(
+          child: Row(
+            children: [
+              if (isDesktop)
+                Expanded(
+                  flex: 2,
+                  child: SideMenuWidget(
+                    onPageSelected: _onPageSelected,
+                  ),
+                ),
+              Expanded(
+                flex: 10,
+                child: pages[pageIdx],
               ),
-            Expanded(
-              flex: 10,
-              child: pages[pageIdx],
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

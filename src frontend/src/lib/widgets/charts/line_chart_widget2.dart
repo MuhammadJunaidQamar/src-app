@@ -1,3 +1,4 @@
+import 'package:awesome_snackbar_content/awesome_snackbar_content.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -33,51 +34,56 @@ class _LineChartWidget2State extends State<LineChartWidget2> {
     _startDataFeed();
   }
 
-  void _showSnackBar(String message) {
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(message),
-          duration: const Duration(microseconds: 500),
-          backgroundColor: Colors.red,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-    }
-  }
-
   void _startDataFeed() {
-    _timer = Timer.periodic(Duration(seconds: 1), (timer) async {
-      try {
-        final fetchedModel = await ViewModel.fetchWorldStates(widget.type);
-        setState(() {
-          model = fetchedModel;
-          _spots.add(FlSpot(_xValue, model.getProperty(widget.type) ?? 0));
-          _xValue += 1;
-          _currentTime =
-              DateTime.now().toLocal().toString().split(' ')[1].split('.')[0];
-          // final elapsed = DateTime.now().difference(_startTime);
-          // if (elapsed.inSeconds < 60) {
-          //   _xValue = elapsed.inSeconds.toDouble();
-          //   timeUnit = 'seconds';
-          // } else if (elapsed.inMinutes < 60) {
-          //   _xValue = elapsed.inMinutes.toDouble();
-          //   timeUnit = 'minutes';
-          // } else {
-          //   _xValue = elapsed.inHours.toDouble();
-          //   timeUnit = 'hours';
-          // }
-          if (_spots.length > numberOfValuesShown) {
-            _spots.removeAt(0);
+    _timer = Timer.periodic(
+      Duration(seconds: 1),
+      (timer) async {
+        try {
+          final fetchedModel = await ViewModel.fetchWorldStates(widget.type);
+          setState(() {
+            model = fetchedModel;
+            _spots.add(FlSpot(_xValue, model.getProperty(widget.type) ?? 0));
+            _xValue += 1;
+            _currentTime =
+                DateTime.now().toLocal().toString().split(' ')[1].split('.')[0];
+            // final elapsed = DateTime.now().difference(_startTime);
+            // if (elapsed.inSeconds < 60) {
+            //   _xValue = elapsed.inSeconds.toDouble();
+            //   timeUnit = 'seconds';
+            // } else if (elapsed.inMinutes < 60) {
+            //   _xValue = elapsed.inMinutes.toDouble();
+            //   timeUnit = 'minutes';
+            // } else {
+            //   _xValue = elapsed.inHours.toDouble();
+            //   timeUnit = 'hours';
+            // }
+            if (_spots.length > numberOfValuesShown) {
+              _spots.removeAt(0);
+            }
+          });
+        } catch (e) {
+          if (kDebugMode) {
+            print('Error: $e');
           }
-        });
-      } catch (e) {
-        if (kDebugMode) {
-          print('Error: $e');
+          SnackBar snackBar = SnackBar(
+            elevation: 0,
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: Colors.transparent,
+            content: AwesomeSnackbarContent(
+              title: 'On Snap!',
+              message: e.toString(),
+              contentType: ContentType.failure,
+            ),
+          );
+
+          if (mounted) {
+            ScaffoldMessenger.of(context)
+              ..hideCurrentSnackBar()
+              ..showSnackBar(snackBar);
+          }
         }
-        _showSnackBar(e.toString());
-      }
-    });
+      },
+    );
   }
 
   @override

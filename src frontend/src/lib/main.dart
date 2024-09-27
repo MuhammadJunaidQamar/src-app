@@ -4,11 +4,17 @@ import 'package:src/utils/const/constants.dart';
 import 'package:src/utils/routes.dart';
 import 'package:src/utils/routes_name.dart';
 import 'package:window_manager/window_manager.dart';
+import 'dart:io' show Platform;
 
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  await windowManager.ensureInitialized();
-  windowManager.setMinimumSize(const Size(600, 750));
+  if (Platform.isWindows ||
+      Platform.isLinux ||
+      Platform.isMacOS ||
+      Platform.isFuchsia) {
+    WidgetsFlutterBinding.ensureInitialized();
+    await windowManager.ensureInitialized();
+    windowManager.setMinimumSize(const Size(600, 750));
+  }
   runApp(const MyApp());
 }
 

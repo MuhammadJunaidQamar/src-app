@@ -18,7 +18,7 @@ class OrientationLayout extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 18.0),
+      padding: const EdgeInsets.only(top: 10.0),
       child: Row(
         children: [
           Expanded(
@@ -26,7 +26,6 @@ class OrientationLayout extends StatelessWidget {
             child: Column(
               children: [
                 const HeaderWidget(),
-                SizedBox(height: 10),
                 Expanded(
                   child: CustomCard(
                     child: SpatialObjectWidget(),

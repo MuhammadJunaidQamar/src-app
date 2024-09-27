@@ -1,10 +1,10 @@
-import 'package:src/charts/chart_widget.dart';
-import 'package:src/charts/line_chart_widget.dart';
-import 'package:src/charts/line_chart_widget2.dart';
-import 'package:src/charts/line_chart_widget3.dart';
-import 'package:src/charts/linet_widget.dart';
-import 'package:src/charts/sample5.dart';
-import 'package:src/charts/temperature_graph.dart';
+import 'package:src/widgets/charts/chart_widget.dart';
+import 'package:src/widgets/charts/line_chart_widget.dart';
+import 'package:src/widgets/charts/line_chart_widget2.dart';
+import 'package:src/widgets/charts/line_chart_widget3.dart';
+import 'package:src/widgets/charts/linet_widget.dart';
+import 'package:src/widgets/charts/sample5.dart';
+import 'package:src/widgets/charts/temperature_graph.dart';
 import 'package:src/model/chart_model.dart';
 import 'package:src/utils/const/constants.dart';
 
@@ -92,13 +92,15 @@ class ChartData {
       type: 'TemperatureGraph',
       lineColor: AppColors.contentColorPink,
       unit: '',
-      chartWidget: TemperatureGraph(),
+      chartWidget: TemperatureGraph(type: 'Pressure'),
     ),
     ChartModel(
       type: 'LineChartSample5',
       lineColor: AppColors.contentColorBlue,
       unit: '',
-      chartWidget: LineChartSample5(),
+      chartWidget: LineChartSample5(
+        type: 'Altitude',
+      ),
     ),
   ];
 }
