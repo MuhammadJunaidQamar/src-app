@@ -5,9 +5,9 @@ import 'package:src/views/screens/geo_location_screen.dart';
 
 Widget getPageWidget(String pages) {
   switch (pages) {
-    case RouteName.dashboardscreen:
+    case RouteName.dashboardScreen:
       return DashboardScreen();
-    case RouteName.geolocationscreen:
+    case RouteName.geoLocationScreen:
       return GeoLocationScreen();
     default:
       return Center(child: Text('No widget defined for this route'));

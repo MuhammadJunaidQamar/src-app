@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:src/data/chart_data.dart';
 import 'package:src/utils/responsive.dart';
+import 'package:src/model/chart_model.dart';
+import 'package:src/utils/routes_name.dart';
 
 class InfoWidget extends StatelessWidget {
   const InfoWidget({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final chartData = ChartData().charts;
+    final List<ChartModel> chartData = ChartData().charts;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12.0),
@@ -21,7 +23,19 @@ class InfoWidget extends StatelessWidget {
         physics: const NeverScrollableScrollPhysics(),
         itemCount: chartData.length,
         itemBuilder: (context, index) {
-          return chartData[index].chartWidget;
+          return GestureDetector(
+            onTap: () {
+              Navigator.pushNamed(
+                context,
+                RouteName.lineChartDisplayScreen,
+                arguments: chartData[index],
+              );
+            },
+            child: Hero(
+              tag: chartData[index].type,
+              child: chartData[index].chartWidget,
+            ),
+          );
         },
       ),
     );

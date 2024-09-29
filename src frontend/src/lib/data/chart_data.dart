@@ -50,57 +50,57 @@ class ChartData {
         unit: 'Pa',
       ),
     ),
-    ChartModel(
-      type: 'SeaPressure',
-      lineColor: AppColors.contentColorBlue,
-      unit: 'Pa',
-      chartWidget: LinetWidget(
-        type: 'SeaPressure',
-        lineColor: AppColors.contentColorBlue,
-        unit: 'Pa',
-      ),
-    ),
-    ChartModel(
-      type: 'Temperature',
-      lineColor: AppColors.contentColorPink,
-      unit: '°C',
-      chartWidget: LinetWidget(
-        type: 'Temperature',
-        lineColor: AppColors.contentColorPink,
-        unit: '°C',
-      ),
-    ),
-    ChartModel(
-      type: 'Pressure',
-      lineColor: AppColors.contentColorCyan,
-      unit: 'Pa',
-      chartWidget: LineChartWidget(type: 'Pressure'),
-    ),
-    ChartModel(
-      type: 'Altitude',
-      lineColor: AppColors.contentColorGreen,
-      unit: 'm',
-      chartWidget: LineChartWidget2(type: 'Altitude'),
-    ),
-    ChartModel(
-      type: 'SeaPressure',
-      lineColor: AppColors.contentColorBlue,
-      unit: 'Pa',
-      chartWidget: LineChart3(type: 'SeaPressure'),
-    ),
-    ChartModel(
-      type: 'TemperatureGraph',
-      lineColor: AppColors.contentColorPink,
-      unit: '',
-      chartWidget: TemperatureGraph(type: 'Pressure'),
-    ),
-    ChartModel(
-      type: 'LineChartSample5',
-      lineColor: AppColors.contentColorBlue,
-      unit: '',
-      chartWidget: LineChartSample5(
-        type: 'Altitude',
-      ),
-    ),
+    // ChartModel(
+    //   type: 'SeaPressure',
+    //   lineColor: AppColors.contentColorBlue,
+    //   unit: 'Pa',
+    //   chartWidget: LineWidget(
+    //     type: 'SeaPressure',
+    //     lineColor: AppColors.contentColorBlue,
+    //     unit: 'Pa',
+    //   ),
+    // ),
+    // ChartModel(
+    //   type: 'Altitude',
+    //   lineColor: AppColors.contentColorPink,
+    //   unit: 'm',
+    //   chartWidget: LineWidget(
+    //     type: 'Altitude',
+    //     lineColor: AppColors.contentColorPink,
+    //     unit: 'm',
+    //   ),
+    // ),
+    // ChartModel(
+    //   type: 'Pressure',
+    //   lineColor: AppColors.contentColorCyan,
+    //   unit: 'Pa',
+    //   chartWidget: LineChartWidget(type: 'Pressure'),
+    // ),
+    // ChartModel(
+    //   type: 'Altitude',
+    //   lineColor: AppColors.contentColorGreen,
+    //   unit: 'm',
+    //   chartWidget: LineChartWidget2(type: 'Altitude'),
+    // ),
+    // ChartModel(
+    //   type: 'SeaPressure',
+    //   lineColor: AppColors.contentColorBlue,
+    //   unit: 'Pa',
+    //   chartWidget: LineChart3(type: 'SeaPressure'),
+    // ),
+    // ChartModel(
+    //   type: 'TemperatureGraph',
+    //   lineColor: AppColors.contentColorPink,
+    //   unit: '',
+    //   chartWidget: TemperatureGraph(type: 'Pressure'),
+    // ),
+    // ChartModel(
+    //   type: 'LineChartSample5',
+    //   lineColor: AppColors.contentColorBlue,
+    //   unit: '',
+    //   chartWidget: LineChartSample5(
+    //     type: 'Altitude',
+    //   ),
+    // ),
   ];
 }

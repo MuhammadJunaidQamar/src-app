@@ -34,9 +34,9 @@ class ViewModel {
       } else {
         String errorMessage =
             'Request failed with status: ${response.statusCode} - Response body: ${response.body}';
-        // if (kDebugMode) {
-        //   print(errorMessage);
-        // }
+        if (kDebugMode) {
+          print(errorMessage);
+        }
         throw Exception(errorMessage);
       }
     } catch (e) {

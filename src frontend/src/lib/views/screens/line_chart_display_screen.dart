@@ -1,0 +1,23 @@
+import 'package:flutter/material.dart';
+import 'package:src/model/chart_model.dart';
+
+class LineChartDisplayScreen extends StatelessWidget {
+  final ChartModel chartModel;
+
+  const LineChartDisplayScreen({required this.chartModel, super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(chartModel.type),
+      ),
+      body: Center(
+        child: Hero(
+          tag: chartModel.type,
+          child: chartModel.chartWidget,
+        ),
+      ),
+    );
+  }
+}

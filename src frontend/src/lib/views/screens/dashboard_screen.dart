@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:src/utils/responsive.dart';
 import 'package:src/widgets/custom_card_widget.dart';
 import 'package:src/widgets/header_widget.dart';
-import 'package:src/widgets/info_wiget.dart';
+import 'package:src/widgets/info_widget.dart';
 import 'package:src/widgets/live_camera_feed_widget.dart';
 
 class DashboardScreen extends StatelessWidget {

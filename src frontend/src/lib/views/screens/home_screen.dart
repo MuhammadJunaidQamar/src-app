@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
 import 'package:src/utils/const/constants.dart';
 import 'package:src/utils/responsive.dart';
-import 'package:src/widgets/info_wiget.dart';
+import 'package:src/widgets/info_widget.dart';
 import 'package:src/widgets/side_menu_widget.dart';
 
 class HomeScreen extends StatefulWidget {

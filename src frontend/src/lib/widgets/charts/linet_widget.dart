@@ -7,21 +7,21 @@ import 'package:src/model/model.dart';
 import 'package:src/utils/const/constants.dart';
 import 'package:src/view_model/view_model.dart';
 
-class LinetWidget extends StatefulWidget {
+class LineWidget extends StatefulWidget {
   final String type;
   final Color lineColor;
   final String unit;
-  const LinetWidget(
+  const LineWidget(
       {super.key,
       required this.type,
       required this.lineColor,
       required this.unit});
 
   @override
-  State<LinetWidget> createState() => _LinetWidgetState();
+  State<LineWidget> createState() => _LineWidgetState();
 }
 
-class _LinetWidgetState extends State<LinetWidget> {
+class _LineWidgetState extends State<LineWidget> {
   final limitCount = 10;
   final _spots = <FlSpot>[];
 
@@ -138,7 +138,7 @@ class _LinetWidgetState extends State<LinetWidget> {
                       ),
                       borderData: FlBorderData(show: false),
                       lineBarsData: [
-                        singleLine(_spots), // Only one line now
+                        singleLine(_spots),
                       ],
                       titlesData: const FlTitlesData(
                         show: false,

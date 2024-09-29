@@ -179,16 +179,6 @@ class _LineChartWidgetState extends State<LineChartWidget> {
                               color: const Color(0xff37434d),
                               strokeWidth: 1,
                             ),
-                            // checkToShowHorizontalLine: (value) {
-                            //   final intValue =
-                            //       reverseY(value, minSpotY, maxSpotY).toInt();
-
-                            //   if (intValue == (maxSpotY + minSpotY).toInt()) {
-                            //     return false;
-                            //   }
-
-                            //   return true;
-                            // },
                             getDrawingVerticalLine: (value) => FlLine(
                               color: const Color(0xff37434d),
                               strokeWidth: 1,

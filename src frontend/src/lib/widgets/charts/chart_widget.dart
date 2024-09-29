@@ -11,56 +11,61 @@ class _LineChart extends StatelessWidget {
   final Color lineColor;
   final String type;
   final String unit;
+  final bool isLoading;
 
   const _LineChart({
     required this.spots,
     required this.type,
     required this.lineColor,
     required this.unit,
+    required this.isLoading,
   });
 
   final int numberOfValuesShown = 9;
 
   @override
   Widget build(BuildContext context) {
-    return LineChart(
-      LineChartData(
-        lineTouchData: LineTouchData(handleBuiltInTouches: true),
-        gridData: const FlGridData(show: false),
-        titlesData: FlTitlesData(
-          bottomTitles: AxisTitles(sideTitles: bottomTitles(spots)),
-          leftTitles: AxisTitles(sideTitles: leftTitles(spots)),
-          rightTitles:
-              const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          topTitles:
-              const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-        ),
-        borderData: FlBorderData(
-          show: true,
-          border: Border(
-            bottom: BorderSide(color: lineColor.withOpacity(0.2), width: 4),
-            left: const BorderSide(color: Colors.transparent),
-          ),
-        ),
-        lineBarsData: [
-          LineChartBarData(
-            isCurved: true,
-            color: lineColor,
-            barWidth: 4,
-            isStrokeCapRound: true,
-            dotData: const FlDotData(show: false),
-            belowBarData: BarAreaData(show: false),
-            spots: spots,
-            preventCurveOverShooting: true,
-            curveSmoothness: 0.2,
-          ),
-        ],
-        minX: getMinX(spots),
-        maxX: getMaxX(spots),
-        minY: getMinY(spots),
-        maxY: getMaxY(spots),
-      ),
-    );
+    return isLoading
+        ? Center(child: CircularProgressIndicator.adaptive())
+        : LineChart(
+            LineChartData(
+              lineTouchData: LineTouchData(handleBuiltInTouches: true),
+              gridData: const FlGridData(show: false),
+              titlesData: FlTitlesData(
+                bottomTitles: AxisTitles(sideTitles: bottomTitles(spots)),
+                leftTitles: AxisTitles(sideTitles: leftTitles(spots)),
+                rightTitles:
+                    const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                topTitles:
+                    const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+              ),
+              borderData: FlBorderData(
+                show: true,
+                border: Border(
+                  bottom:
+                      BorderSide(color: lineColor.withOpacity(0.2), width: 4),
+                  left: const BorderSide(color: Colors.transparent),
+                ),
+              ),
+              lineBarsData: [
+                LineChartBarData(
+                  isCurved: true,
+                  color: lineColor,
+                  barWidth: 4,
+                  isStrokeCapRound: true,
+                  dotData: const FlDotData(show: false),
+                  belowBarData: BarAreaData(show: false),
+                  spots: spots,
+                  preventCurveOverShooting: true,
+                  curveSmoothness: 0.2,
+                ),
+              ],
+              minX: getMinX(spots),
+              maxX: getMaxX(spots),
+              minY: getMinY(spots),
+              maxY: getMaxY(spots),
+            ),
+          );
   }
 
   String _formatTime(int totalSeconds) {
@@ -186,14 +191,12 @@ class ChartWidgetState extends State<ChartWidget> {
   String timeUnit = "seconds";
   double _xValue = 0;
   Model model = Model();
+  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
     _fetchData();
-    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      _fetchData();
-    });
   }
 
   @override
@@ -202,39 +205,60 @@ class ChartWidgetState extends State<ChartWidget> {
     super.dispose();
   }
 
-  Future<void> _fetchData() async {
+  Future<void> _fetchLiveData() async {
     try {
-      final response = await ViewModel.fetchWorldStates(widget.type);
-      setState(() {
-        model = response;
-        _spots.add(FlSpot(_xValue, model.getProperty(widget.type) ?? 0));
+      final fetchedModel = await ViewModel.fetchWorldStates(widget.type);
+      if (mounted) {
+        _updateChart(fetchedModel);
+      }
+    } catch (e) {
+      _handleError(e);
+    }
+  }
+
+  Future<void> _fetchData() async {
+    _timer = Timer.periodic(
+      const Duration(seconds: 1),
+      (timer) async => await _fetchLiveData(),
+    );
+  }
+
+  void _handleError(Object error) {
+    if (kDebugMode) {
+      print('Error: $error');
+    }
+    final snackBar = SnackBar(
+      elevation: 0,
+      behavior: SnackBarBehavior.floating,
+      backgroundColor: Colors.transparent,
+      content: AwesomeSnackbarContent(
+        title: 'Error!',
+        message: error.toString(),
+        contentType: ContentType.failure,
+      ),
+    );
+    if (mounted) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(snackBar);
+    }
+  }
+
+  void _updateChart(Model fetchedModel) {
+    setState(() {
+      model = fetchedModel;
+      final yValue = model.getProperty(widget.type) ?? 0;
+
+      if (yValue.isFinite) {
+        _spots.add(FlSpot(_xValue, yValue));
         _xValue += 1;
+        _isLoading = false;
 
         if (_spots.length > numberOfValuesShown) {
           _spots.removeAt(0);
         }
-      });
-    } catch (e) {
-      if (kDebugMode) {
-        print('Error: $e');
       }
-      SnackBar snackBar = SnackBar(
-        elevation: 0,
-        behavior: SnackBarBehavior.floating,
-        backgroundColor: Colors.transparent,
-        content: AwesomeSnackbarContent(
-          title: 'On Snap!',
-          message: e.toString(),
-          contentType: ContentType.failure,
-        ),
-      );
-
-      if (mounted) {
-        ScaffoldMessenger.of(context)
-          ..hideCurrentSnackBar()
-          ..showSnackBar(snackBar);
-      }
-    }
+    });
   }
 
   @override
@@ -250,7 +274,7 @@ class ChartWidgetState extends State<ChartWidget> {
               Text(
                 widget.type,
                 style: TextStyle(
-                  color: widget.lineColor, //AppColors.primary,
+                  color: widget.lineColor,
                   fontSize: 32,
                   fontWeight: FontWeight.bold,
                   letterSpacing: 2,
@@ -266,6 +290,7 @@ class ChartWidgetState extends State<ChartWidget> {
                     type: widget.type,
                     lineColor: widget.lineColor,
                     unit: widget.unit,
+                    isLoading: _isLoading,
                   ),
                 ),
               ),
