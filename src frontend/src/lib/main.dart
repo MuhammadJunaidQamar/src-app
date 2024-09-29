@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:src/theme/theme_manager.dart';
 import 'package:src/utils/const/constants.dart';
-import 'package:src/utils/routes.dart';
-import 'package:src/utils/routes_name.dart';
+import 'package:src/utils/routing/routes.dart';
+import 'package:src/utils/routing/routes_name.dart';
 import 'package:window_manager/window_manager.dart';
 import 'dart:io' show Platform;
 

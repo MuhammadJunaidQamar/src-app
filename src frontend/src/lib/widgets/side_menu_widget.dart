@@ -12,8 +12,6 @@ class SideMenuWidget extends StatefulWidget {
 }
 
 class _SideMenuWidgetState extends State<SideMenuWidget> {
-  int selectedIndex = 0;
-
   @override
   Widget build(BuildContext context) {
     final data = SideMenuData();
@@ -27,7 +25,7 @@ class _SideMenuWidgetState extends State<SideMenuWidget> {
   }
 
   Widget buildMenuEntry(SideMenuData data, int index) {
-    final isSelected = selectedIndex == index;
+    final isSelected = Constants.pageIdx == index;
     return Container(
       margin: EdgeInsets.symmetric(vertical: 5),
       decoration: BoxDecoration(
@@ -39,7 +37,7 @@ class _SideMenuWidgetState extends State<SideMenuWidget> {
       child: InkWell(
         onTap: () {
           setState(() {
-            selectedIndex = index;
+            Constants.pageIdx = index;
           });
           widget.onPageSelected(index);
         },

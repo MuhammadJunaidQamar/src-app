@@ -1,19 +1,18 @@
 import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:src/utils/routes_name.dart';
-import 'package:src/views/screens/dashboard_screen.dart';
-import 'package:src/views/screens/geo_location_screen.dart';
-import 'package:src/views/screens/orientation_screen.dart';
+import 'package:src/utils/routing/routes_name.dart';
 
 const defaultPadding = 20.0;
-// const pages = [
-//   RouteName.dashboardscreen,
-//   RouteName.orientationscreen,
-//   RouteName.geolocationscreen,
-// ];
+
+const pages = [
+  RouteName.dashboardScreen,
+  RouteName.orientationScreen,
+  RouteName.geoLocationScreen,
+];
 
 class Constants {
+  static int pageIdx = 0;
   static final String baseUrl = kIsWeb
       ? 'http://localhost:5000'
       : (Platform.isAndroid ? 'http://10.0.2.2:5000' : 'http://localhost:5000');
@@ -21,12 +20,6 @@ class Constants {
   static const String postDataUrl = '';
   static const String deleteDataUrl = '';
 }
-
-const pages = [
-  DashboardScreen(),
-  OrientationScreen(),
-  GeoLocationScreen(),
-];
 
 class AppText {
   static const appName = 'Space Research Center';

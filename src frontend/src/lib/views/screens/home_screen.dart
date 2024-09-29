@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/widgets.dart';
 import 'package:src/utils/const/constants.dart';
 import 'package:src/utils/responsive.dart';
+import 'package:src/utils/routing/routes.dart';
 import 'package:src/widgets/info_widget.dart';
 import 'package:src/widgets/side_menu_widget.dart';
 
@@ -9,15 +9,13 @@ class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  _HomeScreenState createState() => _HomeScreenState();
+  State<HomeScreen> createState() => _HomeScreenState();
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  int pageIdx = 0;
-
   void _onPageSelected(int index) {
     setState(() {
-      pageIdx = index;
+      Constants.pageIdx = index;
     });
   }
 
@@ -72,7 +70,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               Expanded(
                 flex: 10,
-                child: pages[pageIdx],
+                child: Routes.getPage(pages[Constants.pageIdx]),
               ),
             ],
           ),

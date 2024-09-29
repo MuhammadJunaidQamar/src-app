@@ -11,6 +11,11 @@ class LineChartDisplayScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: Text(chartModel.type),
+        titleTextStyle: TextStyle(
+          color: chartModel.lineColor.withOpacity(0.2),
+          fontSize: 25,
+          fontWeight: FontWeight.bold,
+        ),
       ),
       body: Center(
         child: Hero(

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:src/data/chart_data.dart';
 import 'package:src/utils/responsive.dart';
 import 'package:src/model/chart_model.dart';
-import 'package:src/utils/routes_name.dart';
+import 'package:src/utils/routing/routes_name.dart';
 
 class InfoWidget extends StatelessWidget {
   const InfoWidget({super.key});
