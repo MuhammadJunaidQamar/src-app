@@ -32,8 +32,10 @@ class Routes {
 
   static Route<dynamic> generateRoute(RouteSettings settings) {
     return MaterialPageRoute(
-      builder: (context) =>
-          getPage(settings.name ?? '', arguments: settings.arguments),
+      builder: (context) => getPage(
+        settings.name!,
+        arguments: settings.arguments,
+      ),
     );
   }
 }
