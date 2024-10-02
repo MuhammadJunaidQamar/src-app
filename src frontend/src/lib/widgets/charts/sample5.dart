@@ -16,10 +16,10 @@ class LineChartSample5 extends StatefulWidget {
     Color? gradientColor3,
     Color? indicatorStrokeColor,
     required this.type,
-  })  : gradientColor1 = gradientColor1 ?? AppColors.contentColorBlue,
-        gradientColor2 = gradientColor2 ?? AppColors.contentColorPink,
-        gradientColor3 = gradientColor3 ?? AppColors.contentColorRed,
-        indicatorStrokeColor = indicatorStrokeColor ?? AppColors.mainTextColor1;
+  })  : gradientColor1 = gradientColor1 ?? AppColors.selectionColor,
+        gradientColor2 = gradientColor2 ?? AppColors.selectionColor,
+        gradientColor3 = gradientColor3 ?? AppColors.selectionColor,
+        indicatorStrokeColor = indicatorStrokeColor ?? AppColors.selectionColor;
 
   final Color gradientColor1;
   final Color gradientColor2;

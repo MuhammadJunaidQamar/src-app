@@ -10,9 +10,9 @@ WiFiMulti WiFiMulti;
 
 // Update these with values suitable for your network.
 
-const char* ssid = "HUAWEI-7sz5";
-const char* password = "3gwpc2BR";
-const char* mqtt_server = "192.168.18.33";
+const char* ssid = "STUDENTS";
+const char* password = "ucpsts12";
+const char* mqtt_server = "10.8.151.146";
 
 WiFiClient espClient;
 PubSubClient client(espClient);
@@ -139,7 +139,7 @@ void loop() {
     client.publish("outTopic", msg);
     
     delay(500);
-    snprintf (msg, MSG_BUFFER_SIZE, "/* 37.00, 98526, 236.88, 98520,  2.84, -0.96, -10.47, 0.06, 0.06, 0.06, 78.36, 0.73, 140.41, 13.14, 6, 31.45, 74.27, 249.30 */");
+    snprintf (msg, MSG_BUFFER_SIZE, "/* 37.00, 98526, 236.88, 98520, 2.84, -0.96, -10.47, 0.06, 0.06, 0.06, 78.36, 0.73, 140.41, 13.14, 6, 31.45, 74.27, 249.30 */");
     Serial.print("Publish message: ");
     Serial.println(msg);
     client.publish("outTopic", msg);

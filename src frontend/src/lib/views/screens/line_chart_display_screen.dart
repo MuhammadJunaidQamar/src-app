@@ -16,6 +16,7 @@ class LineChartDisplayScreen extends StatelessWidget {
           fontSize: 25,
           fontWeight: FontWeight.bold,
         ),
+        forceMaterialTransparency: true,
       ),
       body: Center(
         child: Hero(
