@@ -1,9 +1,11 @@
+import 'package:bitsdojo_window/bitsdojo_window.dart';
 import 'package:flutter/material.dart';
 import 'package:src/utils/const/constants.dart';
 import 'package:src/utils/responsive.dart';
 import 'package:src/utils/routing/routes.dart';
 import 'package:src/widgets/info_widget.dart';
 import 'package:src/widgets/side_menu_widget.dart';
+import 'package:src/widgets/window_buttons_widget.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -25,7 +27,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return SafeArea(
       child: Scaffold(
-        endDrawer: Responsive.isMobile(context) // && pageIdx == 0
+        endDrawer: (Responsive.isMobile(context) || Constants.pageIdx != 0)
             ? Stack(
                 alignment: AlignmentDirectional.topEnd,
                 children: [
@@ -37,14 +39,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                   Padding(
-                    padding: const EdgeInsets.only(
-                      top: 20,
-                    ),
+                    padding: const EdgeInsets.only(top: 20),
                     child: IconButton(
                       onPressed: () => Navigator.of(context).pop(),
-                      icon: const Icon(
-                        Icons.cancel_outlined,
-                      ),
+                      icon: const Icon(Icons.cancel_outlined),
                     ),
                   ),
                 ],
@@ -58,22 +56,49 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               )
             : null,
-        body: SafeArea(
-          child: Row(
-            children: [
-              if (isDesktop)
-                Expanded(
-                  flex: 2,
-                  child: SideMenuWidget(
-                    onPageSelected: _onPageSelected,
+        body: Column(
+          children: [
+            WindowTitleBarBox(
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      AppColors.blackPearlColor,
+                      AppColors.backgroundColor,
+                      // Colors.blue,
+                      // Colors.purple,
+                    ],
+                    tileMode: TileMode.clamp,
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
                   ),
                 ),
-              Expanded(
-                flex: 10,
-                child: Routes.getPage(pages[Constants.pageIdx]),
+                child: Row(
+                  children: [
+                    const Spacer(),
+                    WindowButtonsWidget(),
+                  ],
+                ),
               ),
-            ],
-          ),
+            ),
+            Expanded(
+              child: Row(
+                children: [
+                  if (isDesktop)
+                    Expanded(
+                      flex: 2,
+                      child: SideMenuWidget(
+                        onPageSelected: _onPageSelected,
+                      ),
+                    ),
+                  Expanded(
+                    flex: 10,
+                    child: Routes.getPage(pages[Constants.pageIdx]),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );

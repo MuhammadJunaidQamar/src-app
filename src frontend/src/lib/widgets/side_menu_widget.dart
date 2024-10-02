@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:src/data/side_menu_data.dart';
 import 'package:src/utils/const/constants.dart';
+import 'package:src/widgets/custom_card_widget.dart';
+import 'package:src/widgets/theme_widget.dart';
 
 class SideMenuWidget extends StatefulWidget {
   final ValueChanged<int> onPageSelected;
@@ -15,11 +17,40 @@ class _SideMenuWidgetState extends State<SideMenuWidget> {
   @override
   Widget build(BuildContext context) {
     final data = SideMenuData();
+    final int displayItemsInBuildMenuEntry = 3;
     return Container(
-      padding: EdgeInsets.symmetric(vertical: 18, horizontal: 20),
-      child: ListView.builder(
-        itemCount: data.menu.length,
-        itemBuilder: (context, index) => buildMenuEntry(data, index),
+      padding: EdgeInsets.symmetric(vertical: 15, horizontal: 20),
+      child: Column(
+        children: [
+          CustomCard(
+            color: AppColors.blackPearlColor,
+            child: ListView.builder(
+              shrinkWrap: true,
+              itemCount: data.menu.length > displayItemsInBuildMenuEntry
+                  ? displayItemsInBuildMenuEntry
+                  : data.menu.length,
+              itemBuilder: (context, index) => buildMenuEntry(data, index),
+            ),
+          ),
+          Spacer(),
+          if (data.menu.length > displayItemsInBuildMenuEntry)
+            CustomCard(
+              color: AppColors.blackPearlColor,
+              child: Column(
+                children: [
+                  ThemeWidget(),
+                  ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: data.menu.length > displayItemsInBuildMenuEntry
+                        ? data.menu.length - displayItemsInBuildMenuEntry
+                        : 0,
+                    itemBuilder: (context, index) => infoAndThemeCorner(
+                        data, index + displayItemsInBuildMenuEntry),
+                  ),
+                ],
+              ),
+            )
+        ],
       ),
     );
   }
@@ -32,7 +63,7 @@ class _SideMenuWidgetState extends State<SideMenuWidget> {
         borderRadius: BorderRadius.all(
           Radius.circular(6.0),
         ),
-        color: isSelected ? AppColors.selectionColor : Colors.transparent,
+        color: isSelected ? data.menu[index].color : Colors.transparent,
       ),
       child: InkWell(
         onTap: () {
@@ -47,14 +78,62 @@ class _SideMenuWidgetState extends State<SideMenuWidget> {
               padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 7),
               child: Icon(
                 data.menu[index].icon,
-                color: isSelected ? Colors.black : Colors.grey,
+                color: isSelected
+                    ? AppColors.backgroundColor
+                    : data.menu[index].color,
               ),
             ),
             Text(
               data.menu[index].title,
               style: TextStyle(
                 fontSize: 16,
-                color: isSelected ? Colors.black : Colors.grey,
+                color: isSelected
+                    ? AppColors.backgroundColor
+                    : AppColors.textColor,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget infoAndThemeCorner(SideMenuData data, int index) {
+    final isSelected = Constants.pageIdx == index;
+    return Container(
+      margin: EdgeInsets.symmetric(vertical: 5),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.all(
+          Radius.circular(6.0),
+        ),
+        color: isSelected ? data.menu[index].color : Colors.transparent,
+      ),
+      child: InkWell(
+        onTap: () {
+          setState(() {
+            Constants.pageIdx = index;
+          });
+          widget.onPageSelected(index);
+        },
+        child: Row(
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 7),
+              child: Icon(
+                data.menu[index].icon,
+                color: isSelected
+                    ? AppColors.backgroundColor
+                    : data.menu[index].color,
+              ),
+            ),
+            Text(
+              data.menu[index].title,
+              style: TextStyle(
+                fontSize: 16,
+                color: isSelected
+                    ? AppColors.backgroundColor
+                    : AppColors.textColor,
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
               ),
             ),

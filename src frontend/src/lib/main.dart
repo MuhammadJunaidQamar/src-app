@@ -1,3 +1,4 @@
+import 'package:bitsdojo_window/bitsdojo_window.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:src/theme/theme_manager.dart';
@@ -8,13 +9,28 @@ import 'package:window_manager/window_manager.dart';
 import 'dart:io' show Platform;
 
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  if (!(kIsWeb || Platform.isAndroid || Platform.isIOS)) {
-    await setupWindowManager();
-  }
+  // WidgetsFlutterBinding.ensureInitialized();
+  // if (!(kIsWeb || Platform.isAndroid || Platform.isIOS)) {
+  //   await setupWindowManager();
+  // }
 
   runApp(const MyApp());
+  if (isDesktop) {
+    doWhenWindowReady(() {
+      final initialSize = Size(600, 750);
+      appWindow.minSize = initialSize;
+      appWindow.size = initialSize;
+      appWindow.alignment = Alignment.center;
+      appWindow.show();
+    });
+  }
 }
+
+bool get isDesktop => [
+      TargetPlatform.windows,
+      TargetPlatform.linux,
+      TargetPlatform.macOS
+    ].contains(defaultTargetPlatform);
 
 Future<void> setupWindowManager() async {
   if (Platform.isWindows ||

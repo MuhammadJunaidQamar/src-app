@@ -22,8 +22,8 @@ class CustomCard extends StatelessWidget {
       padding: padding ?? const EdgeInsets.all(10.0),
       decoration: BoxDecoration(
         border: Border.all(
-          width: 5,
-          color: Theme.of(context).primaryColor,
+          width: 1,
+          color: AppColors.cardBorderColor,
         ),
         borderRadius: const BorderRadius.all(
           Radius.circular(20.0),

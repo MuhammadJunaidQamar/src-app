@@ -9,6 +9,7 @@ const pages = [
   RouteName.dashboardScreen,
   RouteName.orientationScreen,
   RouteName.geoLocationScreen,
+  RouteName.projectInfoScreen,
 ];
 
 class Constants {
@@ -43,11 +44,13 @@ extension ColorExtension on Color {
 }
 
 class AppColors {
-  static const cardBackgroundColor = Color(0xFF21222D);
+  static const backgroundColor = eigengrauColor;
+  static const cardBorderColor = squidInkColor;
+  static const themeColor = eigengrauColor;
+  static const textColor = zincColor;
+  static const cardBackgroundColor = eigengrauColor; //Color(0xFF21222D);
   static const primaryColor = Color(0xFF2697FF);
   static const secondaryColor = Color(0xFFFFFFFF);
-  static const backgroundColor = eigengrauColor;
-  static const themeColor = eigengrauColor;
   static const selectionColor = Color(0xFF88B2AC);
 
   static const Color primary = contentColorCyan;
@@ -75,18 +78,20 @@ class AppColors {
   static const neroBlackColor = Color.fromARGB(255, 30, 30, 31);
   static const pinkishRedColor = Color.fromARGB(255, 254, 0, 63);
   static const cyanColor = Color.fromARGB(255, 4, 227, 220);
-  // static const borderColor = Colors.grey;
   static const brownColor = Color.fromARGB(255, 159, 142, 92);
 
-  static const blackPearlColor = Color.fromARGB(255, 22, 30, 41);
-  static const lightSlateGrey = Color.fromARGB(255, 128, 140, 156); //text
-  static const zincColor = Color.fromARGB(255, 191, 199, 210); //headings
-  static const eigengrauColor = Color.fromARGB(255, 16, 21, 29); //background
+  static const blackPearlColor = Color.fromARGB(255, 22, 31, 44);
+  static const lightSlateGrey =
+      Color.fromARGB(255, 128, 140, 156); // less important text
+  static const zincColor = Color.fromARGB(255, 191, 199, 210); //
+  static const eigengrauColor = Color.fromARGB(255, 16, 21, 29); //
   static const squidInkColor = Color.fromARGB(255, 46, 60, 81);
-  static const spanishSkyBlueColor = Color.fromARGB(225, 37, 166, 233);
-  static const mediumSlateBlueColor = Color.fromARGB(255, 137, 100, 232);
+  static const spanishSkyBlueColor = Color.fromARGB(225, 37, 166, 233); //links
+  static const mediumSlateBlueColor = Color.fromARGB(255, 137, 100, 232); //
   static const tropicalIndigoColor =
       Color.fromARGB(255, 168, 127, 251); //button Color
-  static const mediumSeaGreenColor = Color.fromARGB(255, 23, 184, 119);
-  static const deepSaffronColor = Color.fromARGB(255, 255, 162, 62);
+  static const mediumSeaGreenColor = Color.fromARGB(255, 23, 184, 119); //
+  static const deepSaffronColor = Color.fromARGB(255, 255, 162, 62); //
+  static const koromikoColor = Color.fromARGB(255, 255, 194, 110); //
+  static const pantoneColor = Color.fromARGB(255, 108, 74, 254); //switch color
 }

@@ -3,5 +3,10 @@ import 'package:flutter/material.dart';
 class MenuModel {
   final IconData icon;
   final String title;
-  const MenuModel({required this.icon, required this.title});
+  final Color color;
+  const MenuModel({
+    required this.icon,
+    required this.title,
+    required this.color,
+  });
 }

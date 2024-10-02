@@ -6,6 +6,7 @@ import 'package:src/views/screens/geo_location_screen.dart';
 import 'package:src/views/screens/line_chart_display_screen.dart';
 import 'package:src/views/screens/orientation_screen.dart';
 import 'package:src/views/screens/home_screen.dart';
+import 'package:src/views/screens/project_info_screen.dart';
 
 class Routes {
   static Widget getPage(String routeName, {Object? arguments}) {
@@ -21,6 +22,8 @@ class Routes {
       case RouteName.lineChartDisplayScreen:
         final chartModel = arguments as ChartModel;
         return LineChartDisplayScreen(chartModel: chartModel);
+      case RouteName.projectInfoScreen:
+        return ProjectInfoScreen();
       default:
         return const Scaffold(
           body: Center(

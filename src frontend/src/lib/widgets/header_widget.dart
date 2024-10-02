@@ -11,15 +11,12 @@ class HeaderWidget extends StatelessWidget {
     return Row(
       children: [
         if (!Responsive.isDesktop(context))
-          Padding(
-            padding: const EdgeInsets.only(right: 10.0),
-            child: IconButton(
-              onPressed: () => Scaffold.of(context).openDrawer(),
-              icon: const Icon(
-                Icons.menu,
-                color: Colors.grey,
-                size: 25,
-              ),
+          IconButton(
+            onPressed: () => Scaffold.of(context).openDrawer(),
+            icon: const Icon(
+              Icons.menu,
+              color: Colors.grey,
+              size: 25,
             ),
           ),
         Expanded(
@@ -27,7 +24,7 @@ class HeaderWidget extends StatelessWidget {
             child: Text(AppText.appName),
           ),
         ),
-        if (Responsive.isMobile(context))
+        if (Responsive.isMobile(context) || Constants.pageIdx != 0)
           IconButton(
             onPressed: () => Scaffold.of(context).openEndDrawer(),
             icon: const Icon(
