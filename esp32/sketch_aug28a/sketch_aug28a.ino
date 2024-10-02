@@ -12,7 +12,7 @@ WiFiMulti WiFiMulti;
 
 const char* ssid = "STUDENTS";
 const char* password = "ucpsts12";
-const char* mqtt_server = "10.8.151.146";
+const char* mqtt_server = "10.8.156.66";
 
 WiFiClient espClient;
 PubSubClient client(espClient);

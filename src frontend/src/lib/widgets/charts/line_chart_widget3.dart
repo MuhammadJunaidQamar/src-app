@@ -115,7 +115,7 @@ class LineChart3 extends StatefulWidget {
 
 class LineChart3State extends State<LineChart3> {
   late Timer _timer;
-  List<FlSpot> _spots = [];
+  final List<FlSpot> _spots = [];
   int numberOfValuesShown = 10;
   double _xValue = 0;
   Model model = Model();

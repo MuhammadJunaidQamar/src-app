@@ -11,9 +11,12 @@ void main() async {
       Platform.isLinux ||
       Platform.isMacOS ||
       Platform.isFuchsia) {
-    WidgetsFlutterBinding.ensureInitialized();
-    await windowManager.ensureInitialized();
-    windowManager.setMinimumSize(const Size(600, 750));
+    try {
+      await windowManager.ensureInitialized();
+      windowManager.setMinimumSize(const Size(600, 750));
+    } catch (error) {
+      debugPrint("Failed to initialize window manager: $error");
+    }
   }
   runApp(const MyApp());
 }
