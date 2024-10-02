@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:src/theme/theme_manager.dart';
 import 'package:src/utils/const/constants.dart';
@@ -7,6 +8,15 @@ import 'package:window_manager/window_manager.dart';
 import 'dart:io' show Platform;
 
 void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  if (!(kIsWeb || Platform.isAndroid || Platform.isIOS)) {
+    await setupWindowManager();
+  }
+
+  runApp(const MyApp());
+}
+
+Future<void> setupWindowManager() async {
   if (Platform.isWindows ||
       Platform.isLinux ||
       Platform.isMacOS ||
@@ -18,7 +28,6 @@ void main() async {
       debugPrint("Failed to initialize window manager: $error");
     }
   }
-  runApp(const MyApp());
 }
 
 ThemeManager themeManager = ThemeManager();
@@ -54,7 +63,7 @@ class _MyAppState extends State<MyApp> {
     return MaterialApp(
       title: AppText.appName,
       theme: ThemeData(
-        scaffoldBackgroundColor: AppColors.backgroundColor,
+        scaffoldBackgroundColor: AppColors.themeColor,
         brightness: Brightness.dark,
         useMaterial3: true,
       ),
