@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:src/data/chart_data.dart';
-import 'package:src/utils/global/global.dart';
 import 'package:src/utils/responsive.dart';
 import 'package:src/model/chart_model.dart';
 import 'package:src/utils/routing/routes_name.dart';
@@ -16,8 +15,7 @@ class InfoWidget extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 12.0),
       child: GridView.builder(
         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount:
-              Responsive.isTablet(context) || Global.pageIdx != 0 ? 2 : 1,
+          crossAxisCount: Responsive.isTablet(context) ? 2 : 1,
           crossAxisSpacing: 8.0,
           mainAxisSpacing: 8.0,
         ),

@@ -39,6 +39,7 @@ dependencies:
   http: ^1.2.2
   awesome_snackbar_content: ^0.1.4
   bitsdojo_window: ^0.1.6
+  mapbox_maps_flutter: ^2.3.0
 
 dev_dependencies:
   flutter_test:
