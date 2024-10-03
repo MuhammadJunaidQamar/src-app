@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:src/utils/const/constants.dart';
+import 'package:src/utils/constants/constants.dart';
 
 class ThemeWidget extends StatefulWidget {
   const ThemeWidget({super.key});
@@ -25,22 +25,29 @@ class _ThemeWidgetState extends State<ThemeWidget> {
       fontWeight: FontWeight.normal,
     );
     return Padding(
-      padding: const EdgeInsets.only(top: 13, bottom: 13, left: 7),
+      padding: const EdgeInsets.only(top: 13, bottom: 13, left: 12),
       child: Row(
         children: [
-          isDarkTheme ? Icon(Icons.nightlight_round_sharp) : Icon(Icons.sunny),
+          isDarkTheme
+              ? Icon(
+                  Icons.nightlight_round_sharp,
+                  color: AppColors.squidInkColor,
+                )
+              : Icon(
+                  Icons.wb_sunny_rounded,
+                  color: AppColors.deepSaffronColor,
+                ),
           SizedBox(
             width: 10,
           ),
-          Flexible(
-            flex: 3,
+          Expanded(
             child: Text(
               isDarkTheme ? 'Dark Theme' : 'Light Theme',
               style: textStyle,
               overflow: TextOverflow.visible,
+              softWrap: true,
             ),
           ),
-          Spacer(),
           Switch.adaptive(
             value: isDarkTheme,
             onChanged: _toggleTheme,

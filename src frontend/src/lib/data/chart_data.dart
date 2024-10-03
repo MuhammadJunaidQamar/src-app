@@ -6,7 +6,7 @@ import 'package:src/widgets/charts/linet_widget.dart';
 import 'package:src/widgets/charts/sample5.dart';
 import 'package:src/widgets/charts/temperature_graph.dart';
 import 'package:src/model/chart_model.dart';
-import 'package:src/utils/const/constants.dart';
+import 'package:src/utils/constants/constants.dart';
 
 class ChartData {
   final charts = const <ChartModel>[

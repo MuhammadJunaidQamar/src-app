@@ -4,7 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:src/model/model.dart';
-import 'package:src/utils/const/constants.dart';
+import 'package:src/utils/constants/constants.dart';
 import 'package:src/view_model/view_model.dart';
 
 class LineChartWidget2 extends StatefulWidget {

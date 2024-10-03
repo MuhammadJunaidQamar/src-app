@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:src/utils/const/constants.dart';
+import 'package:src/utils/constants/constants.dart';
+import 'package:src/utils/global/global.dart';
 import 'package:src/utils/responsive.dart';
 import 'package:src/utils/routing/routes.dart';
 import 'package:src/widgets/info_widget.dart';
@@ -15,7 +16,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   void _onPageSelected(int index) {
     setState(() {
-      Constants.pageIdx = index;
+      Global.pageIdx = index;
     });
   }
 
@@ -25,7 +26,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return SafeArea(
       child: Scaffold(
-        endDrawer: (Responsive.isMobile(context) || Constants.pageIdx != 0)
+        endDrawer: (Responsive.isMobile(context) || Global.pageIdx != 0)
             ? Stack(
                 alignment: AlignmentDirectional.topEnd,
                 children: [
@@ -65,7 +66,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             Expanded(
               flex: 10,
-              child: Routes.getPage(pages[Constants.pageIdx]),
+              child: Routes.getPage(pages[Global.pageIdx]),
             ),
           ],
         ),

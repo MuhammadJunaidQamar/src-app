@@ -13,19 +13,16 @@ const pages = [
 ];
 
 class Constants {
-  static int pageIdx = 0;
   static final String baseUrl = kIsWeb
       ? 'http://localhost:5000'
       : (Platform.isAndroid ? 'http://10.0.2.2:5000' : 'http://localhost:5000');
   static const String getDataUrl = '/api/SensorData/GetLatestData';
   static const String postDataUrl = '';
   static const String deleteDataUrl = '';
-  static const String mobileAccessTokens =
-      'sk.eyJ1IjoidW5pdmVyc2l0eS1vZi1jZW50cmFsLXB1bmphYiIsImEiOiJjbTFycjcwenMwNzd0MmtzYjh6NDhqb3A0In0.ZQ5JqPEXXoEjFZgTNJCrrQ'; // gradle.properties |
 }
 
 class AppText {
-  static const appName = 'Space Research Center';
+  static const String appName = 'Space Research Center';
   static const String appVersion = '';
 }
 
@@ -48,7 +45,7 @@ class AppColors {
   static const cardBorderColor = squidInkColor;
   static const themeColor = eigengrauColor;
   static const textColor = zincColor;
-  static const cardBackgroundColor = eigengrauColor; //Color(0xFF21222D);
+  static const cardBackgroundColor = eigengrauColor;
   static const primaryColor = Color(0xFF2697FF);
   static const secondaryColor = Color(0xFFFFFFFF);
   static const selectionColor = Color(0xFF88B2AC);
@@ -74,11 +71,6 @@ class AppColors {
   static const Color contentColorPink = Color(0xFFFF3AF2);
   static const Color contentColorRed = Color(0xFFE80054);
   static const Color contentColorCyan = Color(0xFF50E4FF);
-
-  static const neroBlackColor = Color.fromARGB(255, 30, 30, 31);
-  static const pinkishRedColor = Color.fromARGB(255, 254, 0, 63);
-  static const cyanColor = Color.fromARGB(255, 4, 227, 220);
-  static const brownColor = Color.fromARGB(255, 159, 142, 92);
 
   static const blackPearlColor = Color.fromARGB(255, 22, 31, 44);
   static const lightSlateGrey =

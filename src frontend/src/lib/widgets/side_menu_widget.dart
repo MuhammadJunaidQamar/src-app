@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:src/data/side_menu_data.dart';
-import 'package:src/utils/const/constants.dart';
+import 'package:src/utils/constants/constants.dart';
+import 'package:src/utils/global/global.dart';
 import 'package:src/widgets/custom_card_widget.dart';
 import 'package:src/widgets/theme_widget.dart';
 
@@ -33,30 +34,28 @@ class _SideMenuWidgetState extends State<SideMenuWidget> {
             ),
           ),
           Spacer(),
-          if (data.menu.length > displayItemsInBuildMenuEntry)
-            CustomCard(
-              color: AppColors.blackPearlColor,
-              child: Column(
-                children: [
-                  ThemeWidget(),
+          CustomCard(
+            color: AppColors.blackPearlColor,
+            child: Column(
+              children: [
+                ThemeWidget(),
+                if (data.menu.length > displayItemsInBuildMenuEntry)
                   ListView.builder(
                     shrinkWrap: true,
-                    itemCount: data.menu.length > displayItemsInBuildMenuEntry
-                        ? data.menu.length - displayItemsInBuildMenuEntry
-                        : 0,
+                    itemCount: data.menu.length - displayItemsInBuildMenuEntry,
                     itemBuilder: (context, index) => infoAndThemeCorner(
                         data, index + displayItemsInBuildMenuEntry),
                   ),
-                ],
-              ),
-            )
+              ],
+            ),
+          )
         ],
       ),
     );
   }
 
   Widget buildMenuEntry(SideMenuData data, int index) {
-    final isSelected = Constants.pageIdx == index;
+    final isSelected = Global.pageIdx == index;
     return Container(
       margin: EdgeInsets.symmetric(vertical: 5),
       decoration: BoxDecoration(
@@ -68,7 +67,7 @@ class _SideMenuWidgetState extends State<SideMenuWidget> {
       child: InkWell(
         onTap: () {
           setState(() {
-            Constants.pageIdx = index;
+            Global.pageIdx = index;
           });
           widget.onPageSelected(index);
         },
@@ -100,7 +99,7 @@ class _SideMenuWidgetState extends State<SideMenuWidget> {
   }
 
   Widget infoAndThemeCorner(SideMenuData data, int index) {
-    final isSelected = Constants.pageIdx == index;
+    final isSelected = Global.pageIdx == index;
     return Container(
       margin: EdgeInsets.symmetric(vertical: 5),
       decoration: BoxDecoration(
@@ -112,7 +111,7 @@ class _SideMenuWidgetState extends State<SideMenuWidget> {
       child: InkWell(
         onTap: () {
           setState(() {
-            Constants.pageIdx = index;
+            Global.pageIdx = index;
           });
           widget.onPageSelected(index);
         },

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:src/utils/const/constants.dart';
+import 'package:src/utils/constants/constants.dart';
+import 'package:src/utils/global/global.dart';
 import 'package:src/utils/responsive.dart';
 import 'package:src/widgets/custom_card_widget.dart';
 
@@ -24,7 +25,7 @@ class HeaderWidget extends StatelessWidget {
             child: Text(AppText.appName),
           ),
         ),
-        if (Responsive.isMobile(context) || Constants.pageIdx != 0)
+        if (Responsive.isMobile(context) || Global.pageIdx != 0)
           IconButton(
             onPressed: () => Scaffold.of(context).openEndDrawer(),
             icon: const Icon(

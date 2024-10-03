@@ -1,6 +1,6 @@
 import 'package:bitsdojo_window/bitsdojo_window.dart';
 import 'package:flutter/material.dart';
-import 'package:src/utils/const/constants.dart';
+import 'package:src/utils/constants/constants.dart';
 import 'package:src/views/screens/home_screen.dart';
 import 'package:src/widgets/window_buttons_widget.dart';
 
@@ -31,7 +31,7 @@ class TitleBar extends StatelessWidget {
               ),
               child: Row(
                 children: [
-                  // Todo: convert the battery icon into array and display them according to battery percentage getting from the api for CubeSat and improve UI.
+                  // TODO: convert the battery icon into array and display them according to battery percentage getting from the api for CubeSat and improve UI.
                   Icon(Icons.battery_unknown_outlined),
                   Text(
                     '56%',

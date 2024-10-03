@@ -2,7 +2,7 @@ import 'package:bitsdojo_window/bitsdojo_window.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:src/theme/theme_manager.dart';
-import 'package:src/utils/const/constants.dart';
+import 'package:src/utils/constants/constants.dart';
 import 'package:src/utils/routing/routes.dart';
 import 'package:src/utils/routing/routes_name.dart';
 
