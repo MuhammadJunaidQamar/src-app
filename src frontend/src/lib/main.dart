@@ -63,7 +63,7 @@ class _MyAppState extends State<MyApp> {
         brightness: Brightness.dark,
         useMaterial3: true,
       ),
-      initialRoute: RouteName.titleBar,
+      initialRoute: isDesktop ? RouteName.titleBar : RouteName.homeScreen,
       onGenerateRoute: Routes.generateRoute,
     );
   }

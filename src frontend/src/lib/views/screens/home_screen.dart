@@ -1,11 +1,9 @@
-import 'package:bitsdojo_window/bitsdojo_window.dart';
 import 'package:flutter/material.dart';
 import 'package:src/utils/const/constants.dart';
 import 'package:src/utils/responsive.dart';
 import 'package:src/utils/routing/routes.dart';
 import 'package:src/widgets/info_widget.dart';
 import 'package:src/widgets/side_menu_widget.dart';
-import 'package:src/widgets/window_buttons_widget.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
