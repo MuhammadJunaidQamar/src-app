@@ -61,7 +61,7 @@ class _SideMenuWidgetState extends State<SideMenuWidget> {
       margin: EdgeInsets.symmetric(vertical: 5),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.all(
-          Radius.circular(6.0),
+          Radius.circular(16.0),
         ),
         color: isSelected ? data.menu[index].color : Colors.transparent,
       ),
@@ -105,7 +105,7 @@ class _SideMenuWidgetState extends State<SideMenuWidget> {
       margin: EdgeInsets.symmetric(vertical: 5),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.all(
-          Radius.circular(6.0),
+          Radius.circular(16.0),
         ),
         color: isSelected ? data.menu[index].color : Colors.transparent,
       ),

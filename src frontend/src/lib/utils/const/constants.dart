@@ -92,6 +92,7 @@ class AppColors {
       Color.fromARGB(255, 168, 127, 251); //button Color
   static const mediumSeaGreenColor = Color.fromARGB(255, 23, 184, 119); //
   static const deepSaffronColor = Color.fromARGB(255, 255, 162, 62); //
+  static const topazColor = Color.fromARGB(255, 255, 195, 110); //
   static const koromikoColor = Color.fromARGB(255, 255, 194, 110); //
   static const pantoneColor = Color.fromARGB(255, 108, 74, 254); //switch color
 }

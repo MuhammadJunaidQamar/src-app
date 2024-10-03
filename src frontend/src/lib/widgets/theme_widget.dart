@@ -19,19 +19,24 @@ class _ThemeWidgetState extends State<ThemeWidget> {
 
   @override
   Widget build(BuildContext context) {
+    final textStyle = TextStyle(
+      fontSize: 16,
+      color: AppColors.textColor,
+      fontWeight: FontWeight.normal,
+    );
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 7),
+      padding: const EdgeInsets.only(top: 13, bottom: 13, left: 7),
       child: Row(
         children: [
+          isDarkTheme ? Icon(Icons.nightlight_round_sharp) : Icon(Icons.sunny),
+          SizedBox(
+            width: 10,
+          ),
           Flexible(
-            flex: 2,
+            flex: 3,
             child: Text(
-              'Dark Theme',
-              style: TextStyle(
-                fontSize: 16,
-                color: AppColors.textColor,
-                fontWeight: FontWeight.normal,
-              ),
+              isDarkTheme ? 'Dark Theme' : 'Light Theme',
+              style: textStyle,
               overflow: TextOverflow.visible,
             ),
           ),

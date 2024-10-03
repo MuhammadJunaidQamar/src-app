@@ -31,6 +31,15 @@ class TitleBar extends StatelessWidget {
               ),
               child: Row(
                 children: [
+                  // Todo: convert the battery icon into array and display them according to battery percentage getting from the api for CubeSat and improve UI.
+                  Icon(Icons.battery_unknown_outlined),
+                  Text(
+                    '56%',
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: AppColors.lightSlateGrey,
+                    ),
+                  ),
                   Expanded(
                     child: MoveWindow(),
                   ),
