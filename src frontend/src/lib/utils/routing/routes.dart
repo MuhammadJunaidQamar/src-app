@@ -7,6 +7,7 @@ import 'package:src/views/screens/line_chart_display_screen.dart';
 import 'package:src/views/screens/orientation_screen.dart';
 import 'package:src/views/screens/home_screen.dart';
 import 'package:src/views/screens/project_info_screen.dart';
+import 'package:src/views/welcome/title_bar.dart';
 
 class Routes {
   static Widget getPage(String routeName, {Object? arguments}) {
@@ -24,6 +25,8 @@ class Routes {
         return LineChartDisplayScreen(chartModel: chartModel);
       case RouteName.projectInfoScreen:
         return ProjectInfoScreen();
+      case RouteName.titleBar:
+        return TitleBar();
       default:
         return const Scaffold(
           body: Center(

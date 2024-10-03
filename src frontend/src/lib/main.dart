@@ -5,21 +5,15 @@ import 'package:src/theme/theme_manager.dart';
 import 'package:src/utils/const/constants.dart';
 import 'package:src/utils/routing/routes.dart';
 import 'package:src/utils/routing/routes_name.dart';
-import 'package:window_manager/window_manager.dart';
-import 'dart:io' show Platform;
 
 void main() async {
-  // WidgetsFlutterBinding.ensureInitialized();
-  // if (!(kIsWeb || Platform.isAndroid || Platform.isIOS)) {
-  //   await setupWindowManager();
-  // }
-
   runApp(const MyApp());
   if (isDesktop) {
     doWhenWindowReady(() {
       final initialSize = Size(600, 750);
       appWindow.minSize = initialSize;
       appWindow.size = initialSize;
+      appWindow.title = AppText.appName;
       appWindow.alignment = Alignment.center;
       appWindow.show();
     });
@@ -31,20 +25,6 @@ bool get isDesktop => [
       TargetPlatform.linux,
       TargetPlatform.macOS
     ].contains(defaultTargetPlatform);
-
-Future<void> setupWindowManager() async {
-  if (Platform.isWindows ||
-      Platform.isLinux ||
-      Platform.isMacOS ||
-      Platform.isFuchsia) {
-    try {
-      await windowManager.ensureInitialized();
-      windowManager.setMinimumSize(const Size(600, 750));
-    } catch (error) {
-      debugPrint("Failed to initialize window manager: $error");
-    }
-  }
-}
 
 ThemeManager themeManager = ThemeManager();
 
@@ -83,7 +63,7 @@ class _MyAppState extends State<MyApp> {
         brightness: Brightness.dark,
         useMaterial3: true,
       ),
-      initialRoute: RouteName.homeScreen,
+      initialRoute: RouteName.titleBar,
       onGenerateRoute: Routes.generateRoute,
     );
   }

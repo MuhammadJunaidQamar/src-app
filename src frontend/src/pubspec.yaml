@@ -37,7 +37,6 @@ dependencies:
   cupertino_icons: ^1.0.8
   fl_chart: ^0.69.0
   http: ^1.2.2
-  window_manager: ^0.4.2
   awesome_snackbar_content: ^0.1.4
   bitsdojo_window: ^0.1.6
 

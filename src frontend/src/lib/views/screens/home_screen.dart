@@ -56,47 +56,18 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               )
             : null,
-        body: Column(
+        body: Row(
           children: [
-            WindowTitleBarBox(
-              child: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      AppColors.blackPearlColor,
-                      AppColors.backgroundColor,
-                      // Colors.blue,
-                      // Colors.purple,
-                    ],
-                    tileMode: TileMode.clamp,
-                    begin: Alignment.centerLeft,
-                    end: Alignment.centerRight,
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    const Spacer(),
-                    WindowButtonsWidget(),
-                  ],
+            if (isDesktop)
+              Expanded(
+                flex: 2,
+                child: SideMenuWidget(
+                  onPageSelected: _onPageSelected,
                 ),
               ),
-            ),
             Expanded(
-              child: Row(
-                children: [
-                  if (isDesktop)
-                    Expanded(
-                      flex: 2,
-                      child: SideMenuWidget(
-                        onPageSelected: _onPageSelected,
-                      ),
-                    ),
-                  Expanded(
-                    flex: 10,
-                    child: Routes.getPage(pages[Constants.pageIdx]),
-                  ),
-                ],
-              ),
+              flex: 10,
+              child: Routes.getPage(pages[Constants.pageIdx]),
             ),
           ],
         ),
