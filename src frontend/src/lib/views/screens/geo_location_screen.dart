@@ -19,8 +19,6 @@ class GeoLocationScreen extends StatelessWidget {
                 const HeaderWidget(),
                 Expanded(
                   child: CustomCard(
-                    margin: EdgeInsets.all(1),
-                    padding: EdgeInsets.all(0),
                     child: LiveGeoLocationOnMobileWidget(),
                   ),
                 ),

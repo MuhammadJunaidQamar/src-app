@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:src/model/model.dart';
@@ -43,7 +44,17 @@ class ViewModel {
       if (kDebugMode) {
         print('Network error occurred: $e');
       }
-      throw Exception(e);
+      String errorMessage = "";
+      if (e is SocketException) {
+        errorMessage =
+            'You are offline. Please check your internet connection.';
+      } else if (e is HttpException && e.message.contains('404')) {
+        errorMessage = 'Resource not found.';
+      } else {
+        errorMessage = e.toString();
+      }
+
+      throw Exception(errorMessage);
     }
   }
 

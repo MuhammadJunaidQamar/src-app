@@ -78,19 +78,19 @@ class GPS {
       required this.altitude});
 
   GPS.fromJson(Map<String, dynamic> json)
-      : heading = (json['Heading'] is int)
-            ? json['Heading'].toDouble()
-            : json['Heading'],
-        noOfSatellites = json['NoOfSatellites'],
-        longitude = (json['Longitude'] is int)
-            ? json['Longitude'].toDouble()
-            : json['Longitude'],
-        latitude = (json['Latitude'] is int)
-            ? json['Latitude'].toDouble()
-            : json['Latitude'],
-        altitude = (json['Altitude'] is int)
-            ? json['Altitude'].toDouble()
-            : json['Altitude'];
+      : heading = (json['heading'] is int)
+            ? json['heading'].toDouble()
+            : json['heading'],
+        noOfSatellites = json['noOfSatellites'],
+        longitude = (json['longitude'] is int)
+            ? json['longitude'].toDouble()
+            : json['longitude'],
+        latitude = (json['latitude'] is int)
+            ? json['latitude'].toDouble()
+            : json['latitude'],
+        altitude = (json['altitude'] is int)
+            ? json['altitude'].toDouble()
+            : json['altitude'];
 
   Map<String, dynamic> toJson() {
     return {
