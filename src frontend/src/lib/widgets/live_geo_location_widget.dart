@@ -38,6 +38,8 @@ class LiveGeoLocationOnMobileWidgetState
   }
 
   Future<void> _fetchLiveData() async {
+    if (!_isUserInteracting) _easeToLocation();
+
     try {
       final fetchedModel = await ViewModel.fetchWorldStates('Gps');
       if (mounted) {
@@ -89,7 +91,7 @@ class LiveGeoLocationOnMobileWidgetState
         }
 
         _updatePointAnnotation(mapboxMap!, longitude, latitude);
-        if (!_isUserInteracting) _flyToLocation();
+        if (!_isUserInteracting) _easeToLocation();
       }
     });
   }
@@ -120,6 +122,10 @@ class LiveGeoLocationOnMobileWidgetState
 
   @override
   Widget build(BuildContext context) {
+    mb.MapOptions mapOptions = mb.MapOptions(
+      pixelRatio: 1.0,
+    );
+
     return _isLoading
         ? Center(
             child: CircularProgressIndicator.adaptive(),
@@ -127,6 +133,8 @@ class LiveGeoLocationOnMobileWidgetState
         : Stack(
             children: [
               mb.MapWidget(
+                key: ValueKey("mapWidget"), //
+                mapOptions: mapOptions, //
                 onMapCreated: (mb.MapboxMap map) {
                   mapboxMap = map;
                   _onMapCreated(mapboxMap!);
@@ -159,6 +167,20 @@ class LiveGeoLocationOnMobileWidgetState
         bearing: 180,
         pitch: 30,
       ),
+      mb.MapAnimationOptions(duration: 4000, startDelay: 1000),
+    );
+  }
+
+  void _easeToLocation() {
+    if (mapboxMap == null) return;
+
+    mapboxMap!.easeTo(
+      mb.CameraOptions(
+        center: mb.Point(coordinates: mb.Position(longitude, latitude)),
+        zoom: 17,
+        bearing: 180,
+        pitch: 30,
+      ),
       mb.MapAnimationOptions(duration: 2000, startDelay: 0),
     );
   }
@@ -168,6 +190,7 @@ class LiveGeoLocationOnMobileWidgetState
     pointAnnotationManager =
         await mapboxMap.annotations.createPointAnnotationManager();
     _updatePointAnnotation(mapboxMap, longitude, latitude);
+    if (!_isUserInteracting) _flyToLocation();
   }
 
   void _onTap(mb.MapContentGestureContext context) {
@@ -177,7 +200,7 @@ class LiveGeoLocationOnMobileWidgetState
         "Coordinates");
     if (kDebugMode) {
       print(
-          "OnTap coordinate: {${context.point.coordinates.lng}, ${context.point.coordinates.lat}\npoint: {x: ${context.touchPosition.x}, y: ${context.touchPosition.y}}");
+          "OnTap coordinate: {${context.point.coordinates.lng}, ${context.point.coordinates.lat}}\npoint: {x: ${context.touchPosition.x}, y: ${context.touchPosition.y}}");
     }
   }
 
