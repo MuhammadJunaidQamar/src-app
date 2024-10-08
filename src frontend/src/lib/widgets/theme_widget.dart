@@ -1,21 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:src/main.dart';
 import 'package:src/utils/constants/constants.dart';
 
-class ThemeWidget extends StatefulWidget {
+class ThemeWidget extends StatelessWidget {
   const ThemeWidget({super.key});
-
-  @override
-  State<ThemeWidget> createState() => _ThemeWidgetState();
-}
-
-class _ThemeWidgetState extends State<ThemeWidget> {
-  bool isDarkTheme = true;
-
-  void _toggleTheme(bool value) {
-    setState(() {
-      isDarkTheme = value;
-    });
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -23,36 +11,35 @@ class _ThemeWidgetState extends State<ThemeWidget> {
       fontSize: 16,
       color: AppColors.textColor,
       fontWeight: FontWeight.normal,
+      letterSpacing: 0.01,
     );
+
     return Padding(
       padding: const EdgeInsets.only(top: 13, bottom: 13, left: 12),
-      child: Row(
-        children: [
-          isDarkTheme
-              ? Icon(
-                  Icons.nightlight_round_sharp,
-                  color: AppColors.squidInkColor,
-                )
-              : Icon(
-                  Icons.wb_sunny_rounded,
-                  color: AppColors.deepSaffronColor,
-                ),
-          SizedBox(
-            width: 10,
-          ),
-          Expanded(
-            child: Text(
-              isDarkTheme ? 'Dark Theme' : 'Light Theme',
-              style: textStyle,
-              overflow: TextOverflow.visible,
-              softWrap: true,
-            ),
-          ),
-          Switch.adaptive(
-            value: isDarkTheme,
-            onChanged: _toggleTheme,
-          ),
-        ],
+      child: SwitchListTile.adaptive(
+        value: themeManager.themeMode == ThemeMode.dark,
+        onChanged: (value) {
+          themeManager.toggleTheme(value);
+        },
+        title: Text(
+          themeManager.themeMode == ThemeMode.dark
+              ? 'Dark Theme'
+              : 'Light Theme',
+          style: textStyle,
+          maxLines: 2,
+          softWrap: true,
+          overflow: TextOverflow.visible,
+        ),
+        secondary: themeManager.themeMode == ThemeMode.dark
+            ? Icon(
+                Icons.nightlight_round_sharp,
+                color: AppColors.squidInkColor,
+              )
+            : Icon(
+                Icons.wb_sunny_rounded,
+                color: AppColors.deepSaffronColor,
+              ),
+        contentPadding: EdgeInsets.zero,
       ),
     );
   }

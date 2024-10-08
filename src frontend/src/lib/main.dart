@@ -2,6 +2,8 @@ import 'package:bitsdojo_window/bitsdojo_window.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart' as mb;
+import 'package:src/theme/dark_theme.dart';
+import 'package:src/theme/light_theme.dart';
 import 'package:src/theme/theme_manager.dart';
 import 'package:src/utils/constants/constants.dart';
 import 'package:src/utils/routing/routes.dart';
@@ -9,8 +11,10 @@ import 'package:src/utils/routing/routes_name.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  String ACCESS_TOKEN = const String.fromEnvironment("ACCESS_TOKEN");
-  mb.MapboxOptions.setAccessToken(ACCESS_TOKEN);
+  if (!isDesktop) {
+    String ACCESS_TOKEN = const String.fromEnvironment("ACCESS_TOKEN");
+    mb.MapboxOptions.setAccessToken(ACCESS_TOKEN);
+  }
   runApp(const MyApp());
   if (isDesktop) {
     doWhenWindowReady(() {
@@ -62,11 +66,9 @@ class _MyAppState extends State<MyApp> {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: AppText.appName,
-      theme: ThemeData(
-        scaffoldBackgroundColor: AppColors.themeColor,
-        brightness: Brightness.dark,
-        useMaterial3: true,
-      ),
+      theme: lightTheme(context),
+      darkTheme: darkTheme(context),
+      themeMode: ThemeMode.system,
       initialRoute: isDesktop ? RouteName.titleBar : RouteName.homeScreen,
       onGenerateRoute: Routes.generateRoute,
     );
