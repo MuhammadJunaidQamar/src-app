@@ -2,9 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:src/main.dart';
 import 'package:src/utils/constants/constants.dart';
 
-class ThemeWidget extends StatelessWidget {
+class ThemeWidget extends StatefulWidget {
   const ThemeWidget({super.key});
 
+  @override
+  State<ThemeWidget> createState() => _ThemeWidgetState();
+}
+
+class _ThemeWidgetState extends State<ThemeWidget> {
   @override
   Widget build(BuildContext context) {
     final textStyle = TextStyle(
@@ -19,7 +24,9 @@ class ThemeWidget extends StatelessWidget {
       child: SwitchListTile.adaptive(
         value: themeManager.themeMode == ThemeMode.dark,
         onChanged: (value) {
-          themeManager.toggleTheme(value);
+          setState(() {
+            themeManager.toggleTheme(value);
+          });
         },
         title: Text(
           themeManager.themeMode == ThemeMode.dark

@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Live Geo Location on Mapbox Globe</title>
+    <link href='https://api.mapbox.com/mapbox-gl-js/v2.10.0/mapbox-gl.css' rel='stylesheet' />
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+        }
+
+        #map {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 100%;
+        }
+
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            font-size: 24px;
+            background-color: rgba(255, 255, 255, 0.8);
+        }
+    </style>
+    <script src='https://api.mapbox.com/mapbox-gl-js/v2.10.0/mapbox-gl.js'></script>
+</head>
+
+<body>
+
+    <div id="map"></div>
+    <div id="loading" class="loading">Loading...</div>
+
+    <script>
+        mapboxgl.accessToken = 'pk.eyJ1IjoidW5pdmVyc2l0eS1vZi1jZW50cmFsLXB1bmphYiIsImEiOiJjbTFvcmdnOG4wa3puMmlzZjk3eXZ0MTV6In0.L1iyBcvvQon1-1z-0v1hPw'; // Add your Mapbox access token here
+
+        let map;
+        let marker;
+        const latitude = 31.4469;
+        const longitude = 74.2682;
+
+        function initMap() {
+            map = new mapboxgl.Map({
+                container: 'map',
+                style: 'mapbox://styles/mapbox/satellite-v9', // Change style for globe rendering
+                center: [longitude, latitude],
+                zoom: 3, // Start with a lower zoom for globe view
+                projection: 'globe' // Enable globe projection
+            });
+
+            map.on('load', () => {
+                document.getElementById('loading').style.display = 'none';
+
+                // Set the atmosphere and fog to enhance the globe view
+                map.setFog({}); // Default atmosphere style
+            });
+
+            marker = new mapboxgl.Marker()
+                .setLngLat([longitude, latitude])
+                .addTo(map);
+
+            map.flyTo({
+                center: [longitude, latitude],
+                zoom: 17,
+                bearing: 180,
+                pitch: 30,
+                duration: 4000
+            });
+
+            map.on('click', onMapClick);
+            map.on('move', () => {
+                console.log('Map is being interacted with');
+            });
+
+            setInterval(fetchLiveData, 1000);
+        }
+
+        async function fetchLiveData() {
+            try {
+                const fetchedData = await fetch('http://localhost:5000/api/SensorData/GetLatestData?dataType=All');
+                const data = await fetchedData.json();
+
+                const newLat = data.GPS.latitude || latitude;
+                const newLng = data.GPS.longitude || longitude;
+
+                marker.setLngLat([newLng, newLat]);
+                console.log(`Updated coordinates: Lat: ${newLat}, Lng: ${newLng}`);
+            } catch (error) {
+                console.error('Error fetching live data:', error);
+            }
+        }
+
+        function onMapClick(e) {
+            const coordinates = e.lngLat;
+            alert(`Coordinates:\nLng: ${coordinates.lng}, Lat: ${coordinates.lat}`);
+        }
+
+        window.onload = initMap;
+    </script>
+</body>
+
+</html>
