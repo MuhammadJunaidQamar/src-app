@@ -12,6 +12,7 @@ class LiveCameraFeedWidget extends StatelessWidget {
       child: MJPEGStreamScreen(
         width: w,
         height: w * 9 / 16,
+        streamUrl: 'http://10.8.172.190:81/stream',
         showLiveIcon: true,
         watermarkText: 'UCP',
       ),

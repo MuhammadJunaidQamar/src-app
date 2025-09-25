@@ -186,6 +186,7 @@ class ChartWidget extends StatefulWidget {
 
 class ChartWidgetState extends State<ChartWidget> {
   late Timer _timer;
+  double yValue = 0.0;
   final _spots = <FlSpot>[];
   int numberOfValuesShown = 10;
   String timeUnit = "seconds";
@@ -247,7 +248,7 @@ class ChartWidgetState extends State<ChartWidget> {
   void _updateChart(Model fetchedModel) {
     setState(() {
       model = fetchedModel;
-      final yValue = model.getProperty(widget.type) ?? 0;
+      yValue = model.getProperty(widget.type) ?? 0;
 
       if (yValue.isFinite) {
         _spots.add(FlSpot(_xValue, yValue));
@@ -272,7 +273,7 @@ class ChartWidgetState extends State<ChartWidget> {
             children: <Widget>[
               const SizedBox(height: 37),
               Text(
-                widget.type,
+                "${widget.type} ${yValue.toStringAsFixed(2)}${widget.unit}",
                 style: TextStyle(
                   color: widget.lineColor,
                   fontSize: 32,
