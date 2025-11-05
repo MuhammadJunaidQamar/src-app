@@ -13,6 +13,13 @@ const pages = [
 ];
 
 class Constants {
+  static final String wsUrl = kIsWeb
+      ? 'ws://localhost:8765/telemetry'
+      : (Platform.isAndroid
+          ? 'ws://10.0.2.2:8765/telemetry'
+          : 'ws://localhost:8765/telemetry');
+
+  // Deprecated - keeping for backward compatibility
   static final String baseUrl = kIsWeb
       ? 'http://localhost:5000'
       : (Platform.isAndroid ? 'http://10.0.2.2:5000' : 'http://localhost:5000');

@@ -129,31 +129,105 @@ class Model {
       print(json);
     }
 
-    temperature = (json['Temperature'] is int)
-        ? json['Temperature'].toDouble()
-        : json['Temperature'];
-    pressure = (json['Pressure'] is int)
-        ? json['Pressure'].toDouble()
-        : json['Pressure'];
-    altitude = (json['Altitude'] is int)
-        ? json['Altitude'].toDouble()
-        : json['Altitude'];
-    seaPressure = (json['SeaPressure'] is int)
-        ? json['SeaPressure'].toDouble()
-        : json['SeaPressure'];
+    // Support both nested format (old API) and flat format (WebSocket)
 
-    if (json.containsKey('Acceleration')) {
+    // Temperature - try 'temp' first (WebSocket), then 'Temperature' (old API)
+    if (json.containsKey('temp')) {
+      temperature = _toDouble(json['temp']);
+    } else if (json.containsKey('Temperature')) {
+      temperature = _toDouble(json['Temperature']);
+    }
+
+    // Pressure - try 'press' first, then 'Pressure'
+    if (json.containsKey('press')) {
+      pressure = _toDouble(json['press']);
+    } else if (json.containsKey('Pressure')) {
+      pressure = _toDouble(json['Pressure']);
+    }
+
+    // Altitude - try 'alt' first, then 'Altitude'
+    if (json.containsKey('alt')) {
+      altitude = _toDouble(json['alt']);
+    } else if (json.containsKey('Altitude')) {
+      altitude = _toDouble(json['Altitude']);
+    }
+
+    // SeaPressure (only in old API format)
+    if (json.containsKey('SeaPressure')) {
+      seaPressure = _toDouble(json['SeaPressure']);
+    }
+
+    // Acceleration - check for flat format (ax, ay, az) or nested format
+    if (json.containsKey('ax') &&
+        json.containsKey('ay') &&
+        json.containsKey('az')) {
+      acceleration = Acceleration(
+        x: _toDouble(json['ax']),
+        y: _toDouble(json['ay']),
+        z: _toDouble(json['az']),
+      );
+    } else if (json.containsKey('Acceleration')) {
       acceleration = Acceleration.fromJson(json['Acceleration']);
     }
-    if (json.containsKey('Rotation')) {
+
+    // Rotation/Gyroscope - check for flat format (gx, gy, gz) or nested format
+    if (json.containsKey('gx') &&
+        json.containsKey('gy') &&
+        json.containsKey('gz')) {
+      rotation = Rotation(
+        x: _toDouble(json['gx']),
+        y: _toDouble(json['gy']),
+        z: _toDouble(json['gz']),
+      );
+    } else if (json.containsKey('Rotation')) {
       rotation = Rotation.fromJson(json['Rotation']);
     }
-    if (json.containsKey('Distance')) {
+
+    // Distance/Magnetometer - check for flat format (mx, my, mz) or nested format
+    if (json.containsKey('mx') &&
+        json.containsKey('my') &&
+        json.containsKey('mz')) {
+      distance = Distance(
+        x: _toDouble(json['mx']),
+        y: _toDouble(json['my']),
+        z: _toDouble(json['mz']),
+      );
+    } else if (json.containsKey('Distance')) {
       distance = Distance.fromJson(json['Distance']);
     }
-    if (json.containsKey('GPS')) {
+
+    // GPS - check for flat format or nested format
+    if (json.containsKey('lat') ||
+        json.containsKey('lon') ||
+        json.containsKey('head')) {
+      gps = GPS(
+        heading: _toDouble(json['head'] ?? 0.0),
+        noOfSatellites: _toInt(json['sat'] ?? 0),
+        longitude: _toDouble(json['lon'] ?? 0.0),
+        latitude: _toDouble(json['lat'] ?? 0.0),
+        altitude: _toDouble(json['gpsAlt'] ?? 0.0),
+      );
+    } else if (json.containsKey('GPS')) {
       gps = GPS.fromJson(json['GPS']);
     }
+  }
+
+  // Helper method to safely convert to double
+  double _toDouble(dynamic value) {
+    if (value == null) return 0.0;
+    if (value is double) return value;
+    if (value is int) return value.toDouble();
+    if (value is String) return double.tryParse(value) ?? 0.0;
+    return 0.0;
+  }
+
+  // Helper method to safely convert to int
+  int _toInt(dynamic value) {
+    if (value == null) return 0;
+    if (value is int) return value;
+    if (value is double) return value.toInt();
+    if (value is String) return int.tryParse(value) ?? 0;
+    return 0;
   }
 
   Map<String, dynamic> toJson() {

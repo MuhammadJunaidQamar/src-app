@@ -1,106 +1,150 @@
+import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
 import 'package:flutter/foundation.dart';
-import 'package:http/http.dart' as http;
+import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:src/model/model.dart';
 import 'package:src/utils/constants/constants.dart';
 
 class ViewModel {
-  static Future<Model> fetchWorldStates(String type) async {
+  static ViewModel? _instance;
+  WebSocketChannel? _channel;
+  StreamController<Model>? _dataController;
+  Model? _latestData;
+  bool _isConnected = false;
+  Timer? _reconnectTimer;
+
+  // Singleton pattern
+  factory ViewModel() {
+    _instance ??= ViewModel._internal();
+    return _instance!;
+  }
+
+  ViewModel._internal() {
+    _dataController = StreamController<Model>.broadcast();
+    _connect();
+  }
+
+  // Connect to WebSocket
+  void _connect() {
+    if (_isConnected) return;
+
     try {
-      final String typeEncoded = Uri.encodeComponent(type);
-      final String url =
-          '${Constants.baseUrl}${Constants.getDataUrl}?dataType=$typeEncoded';
-      final response = await http.get(Uri.parse(url));
-
       if (kDebugMode) {
-        print('Response status: ${response.statusCode}');
-        print('Response body: ${response.body}');
-        print('Response headers: ${response.headers}');
+        print('Connecting to WebSocket: ${Constants.wsUrl}');
       }
 
-      if (response.statusCode == 200) {
-        try {
-          var dataFromBackend = jsonDecode(response.body);
-          if (dataFromBackend == null || dataFromBackend.isEmpty) {
-            throw Exception('No data found.');
+      _channel = WebSocketChannel.connect(
+        Uri.parse(Constants.wsUrl),
+      );
+
+      _isConnected = true;
+
+      // Listen to incoming messages
+      _channel!.stream.listen(
+        (message) {
+          try {
+            if (kDebugMode) {
+              print('Received WebSocket message: $message');
+            }
+
+            final jsonData = jsonDecode(message);
+            if (jsonData != null && jsonData is Map<String, dynamic>) {
+              final model = Model.fromJson(jsonData);
+              _latestData = model;
+              _dataController?.add(model);
+            }
+          } catch (e) {
+            if (kDebugMode) {
+              print('Error parsing WebSocket message: $e');
+            }
           }
-          return Model.fromJson(dataFromBackend);
-        } catch (e) {
+        },
+        onError: (error) {
           if (kDebugMode) {
-            print('Error decoding JSON: $e');
+            print('WebSocket error: $error');
           }
-          throw Exception('Error decoding JSON.');
-        }
-      } else {
-        String errorMessage =
-            'Request failed with status: ${response.statusCode} - Response body: ${response.body}';
-        if (kDebugMode) {
-          print(errorMessage);
-        }
-        throw Exception(errorMessage);
-      }
+          _handleDisconnect();
+        },
+        onDone: () {
+          if (kDebugMode) {
+            print('WebSocket connection closed');
+          }
+          _handleDisconnect();
+        },
+      );
+
+      // Cancel any existing reconnect timer
+      _reconnectTimer?.cancel();
     } catch (e) {
       if (kDebugMode) {
-        print('Network error occurred: $e');
+        print('Failed to connect to WebSocket: $e');
       }
-      String errorMessage = "";
-      if (e is SocketException) {
-        errorMessage =
-            'You are offline. Please check your internet connection.';
-      } else if (e is HttpException && e.message.contains('404')) {
-        errorMessage = 'Resource not found.';
-      } else {
-        errorMessage = e.toString();
-      }
-
-      throw Exception(errorMessage);
+      _handleDisconnect();
     }
   }
 
-  // static Future<void> removeWorldStates(String name) async {
-  //   try {
-  //     final response = await http.delete(
-  //       Uri.parse('${Constants.baseUrl}${Constants.deleteDataUrl}?Name=$name'),
-  //     );
-  //     if (response.statusCode == 200) {
-  //       if (kDebugMode) {
-  //         print('data deleted successfully');
-  //       }
-  //     } else {
-  //       throw Exception('some error ${response.body}');
-  //     }
-  //   } catch (e) {
-  //     if (kDebugMode) {
-  //       print('Error occurred: $e');
-  //     }
-  //     throw Exception('some error ${e}');
-  //   }
-  // }
+  // Handle disconnection and attempt reconnect
+  void _handleDisconnect() {
+    _isConnected = false;
+    _channel = null;
 
-  // Future<void> takeAwayWorldStates(
-  //     String left, String right, String up, String down) async {
-  //   Model model = Model(
-  //       left: left, right: right, up: up, down: down);
-  //   var data = jsonEncode(model.toJson());
+    // Attempt to reconnect after 3 seconds
+    _reconnectTimer?.cancel();
+    _reconnectTimer = Timer(const Duration(seconds: 3), () {
+      if (kDebugMode) {
+        print('Attempting to reconnect to WebSocket...');
+      }
+      _connect();
+    });
+  }
 
-  //   try {
-  //     final response = await http.post(
-  //       Uri.parse(Constants.baseUrl + Constants.postDataUrl),
-  //       headers: {"Content-Type": "application/json"},
-  //       body: data,
-  //     );
+  // Get stream of data updates
+  Stream<Model> get dataStream => _dataController!.stream;
 
-  //     if (response.statusCode == 200) {
-  //       print('data sent successfully');
-  //     } else {
-  //       throw Exception('some error ${response.body}');
-  //     }
-  //   } catch (e) {
-  //     if (kDebugMode) {
-  //       print('Error occurred: $e');
-  //     }
-  //     throw Exception('some error ${e}');
-  //   }
-  // }
+  // Get latest data (for backward compatibility with existing API)
+  static Future<Model> fetchWorldStates(String type) async {
+    final instance = ViewModel();
+
+    // If we already have data, return it immediately
+    if (instance._latestData != null) {
+      return instance._latestData!;
+    }
+
+    // Otherwise, wait for the first data from the stream
+    try {
+      final model = await instance.dataStream.first.timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          throw Exception('Timeout waiting for data from WebSocket');
+        },
+      );
+      return model;
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error fetching data: $e');
+      }
+      throw Exception('Failed to fetch data: $e');
+    }
+  }
+
+  // Get latest cached data synchronously
+  Model? get latestData => _latestData;
+
+  // Check if connected
+  bool get isConnected => _isConnected;
+
+  // Close connection
+  void dispose() {
+    _reconnectTimer?.cancel();
+    _channel?.sink.close();
+    _dataController?.close();
+    _isConnected = false;
+  }
+
+  // Force reconnect
+  void reconnect() {
+    dispose();
+    _dataController = StreamController<Model>.broadcast();
+    _connect();
+  }
 }

@@ -16,7 +16,7 @@ class LineChartWidget extends StatefulWidget {
 
 class _LineChartWidgetState extends State<LineChartWidget> {
   final List<FlSpot> _spots = [];
-  late Timer _timer;
+  StreamSubscription<Model>? _dataSubscription;
   int numberOfValuesShown = 10;
   String timeUnit = "seconds";
   double _xValue = 0;
@@ -26,15 +26,17 @@ class _LineChartWidgetState extends State<LineChartWidget> {
   @override
   void initState() {
     super.initState();
-    _startDataFeed();
+    _subscribeToData();
   }
 
-  void _startDataFeed() {
-    _timer = Timer.periodic(Duration(seconds: 1), (timer) async {
-      try {
-        final fetchedModel = await ViewModel.fetchWorldStates(widget.type);
-        setState(
-          () {
+  void _subscribeToData() {
+    final viewModel = ViewModel();
+
+    // Subscribe to real-time WebSocket stream
+    _dataSubscription = viewModel.dataStream.listen(
+      (fetchedModel) {
+        if (mounted) {
+          setState(() {
             model = fetchedModel;
             _spots.add(FlSpot(_xValue, model.getProperty(widget.type) ?? 0));
             _xValue += 1;
@@ -43,9 +45,10 @@ class _LineChartWidgetState extends State<LineChartWidget> {
             if (_spots.length > numberOfValuesShown) {
               _spots.removeAt(0);
             }
-          },
-        );
-      } catch (e) {
+          });
+        }
+      },
+      onError: (e) {
         if (kDebugMode) {
           print('Error: $e');
         }
@@ -65,13 +68,18 @@ class _LineChartWidgetState extends State<LineChartWidget> {
             ..hideCurrentSnackBar()
             ..showSnackBar(snackBar);
         }
-      }
-    });
+      },
+    );
+
+    // Load initial data if available
+    if (viewModel.latestData != null) {
+      model = viewModel.latestData!;
+    }
   }
 
   @override
   void dispose() {
-    _timer.cancel();
+    _dataSubscription?.cancel();
     super.dispose();
   }
 
@@ -162,10 +170,10 @@ class _LineChartWidgetState extends State<LineChartWidget> {
                     Expanded(
                       child: LineChart(
                         LineChartData(
-                          minX: _timer.tick > numberOfValuesShown
+                          minX: _spots.length > numberOfValuesShown
                               ? _xValue - numberOfValuesShown
                               : 0,
-                          maxX: _timer.tick > numberOfValuesShown
+                          maxX: _spots.length > numberOfValuesShown
                               ? _xValue
                               : numberOfValuesShown.toDouble(),
                           minY: getMinY(_spots),

@@ -27,52 +27,61 @@ class _LineWidgetState extends State<LineWidget> {
 
   double xValue = 0;
 
-  late Timer timer;
+  StreamSubscription<Model>? _dataSubscription;
 
   Model model = Model();
 
   @override
   void initState() {
     super.initState();
-    _fetchData();
-    timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      _fetchData();
-    });
+    _subscribeToData();
   }
 
-  Future<void> _fetchData() async {
-    try {
-      final response = await ViewModel.fetchWorldStates(widget.type);
-      setState(() {
-        model = response;
+  void _subscribeToData() {
+    final viewModel = ViewModel();
 
-        _spots.add(FlSpot(xValue, model.getProperty(widget.type) ?? 0));
-        xValue += 1;
+    // Subscribe to real-time WebSocket stream
+    _dataSubscription = viewModel.dataStream.listen(
+      (fetchedModel) {
+        if (mounted) {
+          setState(() {
+            model = fetchedModel;
 
-        if (_spots.length > limitCount) {
-          _spots.removeAt(0);
+            _spots.add(FlSpot(xValue, model.getProperty(widget.type) ?? 0));
+            xValue += 1;
+
+            if (_spots.length > limitCount) {
+              _spots.removeAt(0);
+            }
+          });
         }
-      });
-    } catch (e) {
-      if (kDebugMode) {
-        print('Error: $e');
-      }
-      SnackBar snackBar = SnackBar(
-        elevation: 0,
-        behavior: SnackBarBehavior.floating,
-        backgroundColor: Colors.transparent,
-        content: AwesomeSnackbarContent(
-          title: 'On Snap!',
-          message: e.toString(),
-          contentType: ContentType.failure,
-        ),
-      );
+      },
+      onError: (e) {
+        if (kDebugMode) {
+          print('Error: $e');
+        }
+        SnackBar snackBar = SnackBar(
+          elevation: 0,
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: Colors.transparent,
+          content: AwesomeSnackbarContent(
+            title: 'On Snap!',
+            message: e.toString(),
+            contentType: ContentType.failure,
+          ),
+        );
 
-      if (mounted) {
-        ScaffoldMessenger.of(context)
-          ..hideCurrentSnackBar()
-          ..showSnackBar(snackBar);
-      }
+        if (mounted) {
+          ScaffoldMessenger.of(context)
+            ..hideCurrentSnackBar()
+            ..showSnackBar(snackBar);
+        }
+      },
+    );
+
+    // Load initial data if available
+    if (viewModel.latestData != null) {
+      model = viewModel.latestData!;
     }
   }
 
@@ -169,7 +178,7 @@ class _LineWidgetState extends State<LineWidget> {
 
   @override
   void dispose() {
-    timer.cancel();
+    _dataSubscription?.cancel();
     super.dispose();
   }
 }

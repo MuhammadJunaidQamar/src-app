@@ -185,7 +185,7 @@ class ChartWidget extends StatefulWidget {
 }
 
 class ChartWidgetState extends State<ChartWidget> {
-  late Timer _timer;
+  StreamSubscription<Model>? _dataSubscription;
   double yValue = 0.0;
   final _spots = <FlSpot>[];
   int numberOfValuesShown = 10;
@@ -197,31 +197,34 @@ class ChartWidgetState extends State<ChartWidget> {
   @override
   void initState() {
     super.initState();
-    _fetchData();
+    _subscribeToData();
   }
 
   @override
   void dispose() {
-    _timer.cancel();
+    _dataSubscription?.cancel();
     super.dispose();
   }
 
-  Future<void> _fetchLiveData() async {
-    try {
-      final fetchedModel = await ViewModel.fetchWorldStates(widget.type);
-      if (mounted) {
-        _updateChart(fetchedModel);
-      }
-    } catch (e) {
-      _handleError(e);
-    }
-  }
+  void _subscribeToData() {
+    final viewModel = ViewModel();
 
-  Future<void> _fetchData() async {
-    _timer = Timer.periodic(
-      const Duration(seconds: 1),
-      (timer) async => await _fetchLiveData(),
+    // Subscribe to real-time WebSocket stream
+    _dataSubscription = viewModel.dataStream.listen(
+      (fetchedModel) {
+        if (mounted) {
+          _updateChart(fetchedModel);
+        }
+      },
+      onError: (error) {
+        _handleError(error);
+      },
     );
+
+    // Load initial data if available
+    if (viewModel.latestData != null) {
+      _updateChart(viewModel.latestData!);
+    }
   }
 
   void _handleError(Object error) {

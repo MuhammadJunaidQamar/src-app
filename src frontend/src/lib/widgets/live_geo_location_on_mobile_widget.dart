@@ -18,7 +18,7 @@ class LiveGeoLocationOnMobileWidgetState
     extends State<LiveGeoLocationOnMobileWidget> {
   mb.MapboxMap? mapboxMap;
   Model model = Model();
-  late Timer _timer;
+  StreamSubscription<Model>? _dataSubscription;
   bool _isLoading = false;
   double latitude = 31.4469;
   double longitude = 74.2682;
@@ -30,28 +30,29 @@ class LiveGeoLocationOnMobileWidgetState
   @override
   void initState() {
     super.initState();
-    _fetchData();
-    _timer = Timer.periodic(
-      const Duration(seconds: 1),
-      (timer) async => _fetchLiveData(),
+    _subscribeToData();
+  }
+
+  void _subscribeToData() {
+    final viewModel = ViewModel();
+
+    // Subscribe to real-time WebSocket stream
+    _dataSubscription = viewModel.dataStream.listen(
+      (fetchedModel) {
+        if (mounted) {
+          _updateCoordinates(fetchedModel);
+          if (!_isUserInteracting) _easeToLocation();
+        }
+      },
+      onError: (error) {
+        _handleSnackBar(error, ContentType.failure, 'Error!');
+      },
     );
-  }
 
-  Future<void> _fetchLiveData() async {
-    if (!_isUserInteracting) _easeToLocation();
-
-    try {
-      final fetchedModel = await ViewModel.fetchWorldStates('Gps');
-      if (mounted) {
-        _updateCoordinates(fetchedModel);
-      }
-    } catch (e) {
-      _handleSnackBar(e, ContentType.failure, 'Error!');
+    // Load initial data if available
+    if (viewModel.latestData != null) {
+      _updateCoordinates(viewModel.latestData!);
     }
-  }
-
-  Future<void> _fetchData() async {
-    await _fetchLiveData();
   }
 
   void _handleSnackBar(Object error, ContentType contentType, String title) {
@@ -116,7 +117,7 @@ class LiveGeoLocationOnMobileWidgetState
 
   @override
   void dispose() {
-    _timer.cancel();
+    _dataSubscription?.cancel();
     super.dispose();
   }
 

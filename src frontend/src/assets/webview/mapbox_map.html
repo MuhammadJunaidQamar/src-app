@@ -42,6 +42,8 @@
 
         let map;
         let marker;
+        let ws;
+        let reconnectInterval;
         const latitude = 31.4469;
         const longitude = 74.2682;
 
@@ -78,21 +80,67 @@
                 console.log('Map is being interacted with');
             });
 
-            setInterval(fetchLiveData, 1000);
+            // Connect to WebSocket for real-time updates
+            connectWebSocket();
         }
 
-        async function fetchLiveData() {
+        function connectWebSocket() {
             try {
-                const fetchedData = await fetch('http://localhost:5000/api/SensorData/GetLatestData?dataType=All');
-                const data = await fetchedData.json();
+                console.log('Connecting to WebSocket: ws://localhost:8765/telemetry');
+                ws = new WebSocket('ws://localhost:8765/telemetry');
 
-                const newLat = data.GPS.latitude || latitude;
-                const newLng = data.GPS.longitude || longitude;
+                ws.onopen = () => {
+                    console.log('WebSocket connected');
+                    if (reconnectInterval) {
+                        clearTimeout(reconnectInterval);
+                        reconnectInterval = null;
+                    }
+                };
+
+                ws.onmessage = (event) => {
+                    try {
+                        const data = JSON.parse(event.data);
+                        updateLocation(data);
+                    } catch (error) {
+                        console.error('Error parsing WebSocket message:', error);
+                    }
+                };
+
+                ws.onerror = (error) => {
+                    console.error('WebSocket error:', error);
+                };
+
+                ws.onclose = () => {
+                    console.log('WebSocket disconnected. Attempting to reconnect in 3 seconds...');
+                    reconnectInterval = setTimeout(connectWebSocket, 3000);
+                };
+            } catch (error) {
+                console.error('Failed to connect to WebSocket:', error);
+                reconnectInterval = setTimeout(connectWebSocket, 3000);
+            }
+        }
+
+        function updateLocation(data) {
+            try {
+                // Support both flat format (WebSocket) and nested format (old API)
+                let newLat, newLng;
+                
+                if (data.lat !== undefined && data.lon !== undefined) {
+                    // Flat format from WebSocket
+                    newLat = data.lat || latitude;
+                    newLng = data.lon || longitude;
+                } else if (data.GPS) {
+                    // Nested format
+                    newLat = data.GPS.latitude || latitude;
+                    newLng = data.GPS.longitude || longitude;
+                } else {
+                    return; // No GPS data
+                }
 
                 marker.setLngLat([newLng, newLat]);
                 console.log(`Updated coordinates: Lat: ${newLat}, Lng: ${newLng}`);
             } catch (error) {
-                console.error('Error fetching live data:', error);
+                console.error('Error updating location:', error);
             }
         }
 

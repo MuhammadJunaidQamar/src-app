@@ -21,7 +21,7 @@ class _LineChartWidget2State extends State<LineChartWidget2> {
     AppColors.contentColorBlue,
   ];
   final List<FlSpot> _spots = [];
-  late Timer _timer;
+  StreamSubscription<Model>? _dataSubscription;
   int numberOfValuesShown = 10;
   String timeUnit = "seconds";
   double _xValue = 0;
@@ -31,15 +31,16 @@ class _LineChartWidget2State extends State<LineChartWidget2> {
   @override
   void initState() {
     super.initState();
-    _startDataFeed();
+    _subscribeToData();
   }
 
-  void _startDataFeed() {
-    _timer = Timer.periodic(
-      Duration(seconds: 1),
-      (timer) async {
-        try {
-          final fetchedModel = await ViewModel.fetchWorldStates(widget.type);
+  void _subscribeToData() {
+    final viewModel = ViewModel();
+
+    // Subscribe to real-time WebSocket stream
+    _dataSubscription = viewModel.dataStream.listen(
+      (fetchedModel) {
+        if (mounted) {
           setState(() {
             model = fetchedModel;
             _spots.add(FlSpot(_xValue, model.getProperty(widget.type) ?? 0));
@@ -50,34 +51,40 @@ class _LineChartWidget2State extends State<LineChartWidget2> {
               _spots.removeAt(0);
             }
           });
-        } catch (e) {
-          if (kDebugMode) {
-            print('Error: $e');
-          }
-          SnackBar snackBar = SnackBar(
-            elevation: 0,
-            behavior: SnackBarBehavior.floating,
-            backgroundColor: Colors.transparent,
-            content: AwesomeSnackbarContent(
-              title: 'On Snap!',
-              message: e.toString(),
-              contentType: ContentType.failure,
-            ),
-          );
+        }
+      },
+      onError: (e) {
+        if (kDebugMode) {
+          print('Error: $e');
+        }
+        SnackBar snackBar = SnackBar(
+          elevation: 0,
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: Colors.transparent,
+          content: AwesomeSnackbarContent(
+            title: 'On Snap!',
+            message: e.toString(),
+            contentType: ContentType.failure,
+          ),
+        );
 
-          if (mounted) {
-            ScaffoldMessenger.of(context)
-              ..hideCurrentSnackBar()
-              ..showSnackBar(snackBar);
-          }
+        if (mounted) {
+          ScaffoldMessenger.of(context)
+            ..hideCurrentSnackBar()
+            ..showSnackBar(snackBar);
         }
       },
     );
+
+    // Load initial data if available
+    if (viewModel.latestData != null) {
+      model = viewModel.latestData!;
+    }
   }
 
   @override
   void dispose() {
-    _timer.cancel();
+    _dataSubscription?.cancel();
     super.dispose();
   }
 
@@ -166,10 +173,10 @@ class _LineChartWidget2State extends State<LineChartWidget2> {
                     Expanded(
                       child: LineChart(
                         LineChartData(
-                          minX: _timer.tick > numberOfValuesShown
+                          minX: _spots.length > numberOfValuesShown
                               ? _xValue - numberOfValuesShown
                               : 0,
-                          maxX: _timer.tick > numberOfValuesShown
+                          maxX: _spots.length > numberOfValuesShown
                               ? _xValue
                               : numberOfValuesShown.toDouble(),
                           minY: getMinY(_spots),

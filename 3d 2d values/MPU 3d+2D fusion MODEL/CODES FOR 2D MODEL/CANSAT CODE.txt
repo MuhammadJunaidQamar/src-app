@@ -1,0 +1,107 @@
+#include <WiFi.h>
+#include <esp_now.h>
+#include <Wire.h>
+#include <Adafruit_MPU6050.h>
+#include <Adafruit_Sensor.h>
+#include <QMC5883LCompass.h>
+
+// --- Sensor Objects ---
+Adafruit_MPU6050 mpu;
+QMC5883LCompass compass;
+
+// --- Receiver MAC Address (Ground Station) ---
+uint8_t receiverAddress[] = {0x28, 0x56, 0x2F, 0x49, 0xDA, 0x68};
+
+// --- Data Structure for Transmission ---
+typedef struct {
+  float roll;
+  float pitch;
+  float yaw;
+  float heading;
+} CanSatData;
+
+CanSatData satData;
+
+// --- Send Callback ---
+void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
+  Serial.print("Send Status: ");
+  Serial.println(status == ESP_NOW_SEND_SUCCESS ? "✅ Success" : "❌ Fail");
+}
+
+// --- Initialize MPU6050 ---
+void initMPU() {
+  if (!mpu.begin()) {
+    Serial.println("❌ MPU6050 not found!");
+    while (1);
+  }
+  Serial.println("✅ MPU6050 ready");
+  mpu.setAccelerometerRange(MPU6050_RANGE_8_G);
+  mpu.setGyroRange(MPU6050_RANGE_500_DEG);
+  mpu.setFilterBandwidth(MPU6050_BAND_21_HZ);
+  delay(100);
+}
+
+// --- Initialize Compass (HMC5883L / QMC5883L) ---
+void initCompass() {
+  compass.init();
+  // Calibration values — adjust after testing
+  compass.setCalibration(-700, 800, -800, 900, -600, 800);
+  Serial.println("✅ Compass ready");
+}
+
+void setup() {
+  Serial.begin(115200);
+  WiFi.mode(WIFI_STA);
+  Serial.println("\nInitializing CanSat Transmitter...");
+
+  initMPU();
+  initCompass();
+
+  // Init ESP-NOW
+  if (esp_now_init() != ESP_OK) {
+    Serial.println("❌ ESP-NOW Init Failed!");
+    return;
+  }
+
+  // Register peer and callback
+  esp_now_register_send_cb(OnDataSent);
+  esp_now_peer_info_t peerInfo = {};
+  memcpy(peerInfo.peer_addr, receiverAddress, 6);
+  peerInfo.channel = 0;
+  peerInfo.encrypt = false;
+
+  if (esp_now_add_peer(&peerInfo) != ESP_OK) {
+    Serial.println("❌ Failed to add peer");
+    return;
+  }
+
+  Serial.println("✅ ESP-NOW ready. Sending orientation data...");
+}
+
+void loop() {
+  // --- MPU6050 (Roll, Pitch, Yaw) ---
+  sensors_event_t a, g, temp;
+  mpu.getEvent(&a, &g, &temp);
+
+  satData.roll  = atan2(a.acceleration.y, a.acceleration.z) * 180 / PI;
+  satData.pitch = atan(-a.acceleration.x /
+                       sqrt(a.acceleration.y * a.acceleration.y + a.acceleration.z * a.acceleration.z)) * 180 / PI;
+  satData.yaw = g.gyro.z; // Simplified yaw
+
+  // --- Compass Heading ---
+  compass.read();
+  float x = compass.getX();
+  float y = compass.getY();
+  float heading = atan2(y, x) * 180 / PI;
+  if (heading < 0) heading += 360;
+  satData.heading = heading;
+
+  // --- Send via ESP-NOW ---
+  esp_now_send(receiverAddress, (uint8_t *)&satData, sizeof(satData));
+
+  // --- Debug Print ---
+  Serial.printf("ROLL=%.2f  PITCH=%.2f  YAW=%.2f | HEADING=%.2f°\n",
+                satData.roll, satData.pitch, satData.yaw, satData.heading);
+
+  delay(200); // 5 Hz update rate
+}

@@ -34,7 +34,7 @@ class _LineChartSample5State extends State<LineChartSample5> {
   List<int> showingTooltipOnSpots = [1, 3, 5];
   final List<FlSpot> _spots = [];
   bool _isLoading = true;
-  late Timer _timer;
+  StreamSubscription<Model>? _dataSubscription;
   final int numberOfValuesShown = 10;
   double _xValue = 0;
   Model model = Model();
@@ -42,24 +42,27 @@ class _LineChartSample5State extends State<LineChartSample5> {
   @override
   void initState() {
     super.initState();
-    fetchData();
+    _subscribeToData();
   }
 
-  Future<void> fetchData() async {
-    _timer = Timer.periodic(
-      const Duration(seconds: 1),
-      (timer) async => await _fetchLiveData(),
+  void _subscribeToData() {
+    final viewModel = ViewModel();
+
+    // Subscribe to real-time WebSocket stream
+    _dataSubscription = viewModel.dataStream.listen(
+      (fetchedModel) {
+        if (mounted) {
+          _updateChart(fetchedModel);
+        }
+      },
+      onError: (error) {
+        _handleError(error);
+      },
     );
-  }
 
-  Future<void> _fetchLiveData() async {
-    try {
-      final fetchedModel = await ViewModel.fetchWorldStates(widget.type);
-      if (mounted) {
-        _updateChart(fetchedModel);
-      }
-    } catch (e) {
-      _handleError(e);
+    // Load initial data if available
+    if (viewModel.latestData != null) {
+      _updateChart(viewModel.latestData!);
     }
   }
 
@@ -249,7 +252,7 @@ class _LineChartSample5State extends State<LineChartSample5> {
 
   @override
   void dispose() {
-    _timer.cancel();
+    _dataSubscription?.cancel();
     super.dispose();
   }
 }

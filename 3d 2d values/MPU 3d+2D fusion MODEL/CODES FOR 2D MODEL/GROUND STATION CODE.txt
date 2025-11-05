@@ -1,0 +1,40 @@
+#include <WiFi.h>
+#include <esp_now.h>
+
+typedef struct {
+  float roll;
+  float pitch;
+  float yaw;
+  float heading;
+} CanSatData;
+
+CanSatData incomingData;
+
+// === Updated callback for ESP32 core v3.x ===
+void OnDataRecv(const esp_now_recv_info *info, const uint8_t *data, int len) {
+  memcpy(&incomingData, data, sizeof(incomingData));
+
+  Serial.printf("ROLL=%.2f  PITCH=%.2f  YAW=%.2f | HEADING=%.2f°\n",
+                incomingData.roll, incomingData.pitch,
+                incomingData.yaw, incomingData.heading);
+}
+
+void setup() {
+  Serial.begin(115200);
+  WiFi.mode(WIFI_STA);
+  Serial.println("Initializing Ground Station Receiver...");
+
+  if (esp_now_init() != ESP_OK) {
+    Serial.println("❌ ESP-NOW Init Failed!");
+    return;
+  }
+
+  // ✅ Register the new callback
+  esp_now_register_recv_cb(OnDataRecv);
+
+  Serial.println("✅ Ready to receive CanSat telemetry...");
+}
+
+void loop() {
+  // No code needed — handled by callback
+}

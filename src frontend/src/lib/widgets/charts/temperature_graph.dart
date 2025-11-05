@@ -19,7 +19,7 @@ class TemperatureGraph extends StatefulWidget {
 class _TemperatureGraphState extends State<TemperatureGraph> {
   final List<FlSpot> _spots = [];
   bool _isLoading = true;
-  late Timer _timer;
+  StreamSubscription<Model>? _dataSubscription;
   final int numberOfValuesShown = 43;
   double _xValue = 0;
   Model model = Model();
@@ -27,24 +27,27 @@ class _TemperatureGraphState extends State<TemperatureGraph> {
   @override
   void initState() {
     super.initState();
-    _startDataFetch();
+    _subscribeToData();
   }
 
-  void _startDataFetch() {
-    _timer = Timer.periodic(
-      const Duration(seconds: 1),
-      (timer) async => await _fetchLiveData(),
+  void _subscribeToData() {
+    final viewModel = ViewModel();
+
+    // Subscribe to real-time WebSocket stream
+    _dataSubscription = viewModel.dataStream.listen(
+      (fetchedModel) {
+        if (mounted) {
+          _updateChart(fetchedModel);
+        }
+      },
+      onError: (error) {
+        _handleError(error);
+      },
     );
-  }
 
-  Future<void> _fetchLiveData() async {
-    try {
-      final fetchedModel = await ViewModel.fetchWorldStates(widget.type);
-      if (mounted) {
-        _updateChart(fetchedModel);
-      }
-    } catch (e) {
-      _handleError(e);
+    // Load initial data if available
+    if (viewModel.latestData != null) {
+      _updateChart(viewModel.latestData!);
     }
   }
 
@@ -103,7 +106,7 @@ class _TemperatureGraphState extends State<TemperatureGraph> {
 
   @override
   void dispose() {
-    _timer.cancel();
+    _dataSubscription?.cancel();
     super.dispose();
   }
 

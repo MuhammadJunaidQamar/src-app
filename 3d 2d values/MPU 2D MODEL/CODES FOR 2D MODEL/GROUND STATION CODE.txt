@@ -1,0 +1,45 @@
+#include <esp_now.h>
+#include <WiFi.h>
+#include <Wire.h>
+
+// Structure matching sender data
+typedef struct {
+  float roll;
+  float pitch;
+  float yaw;
+} MPUData;
+
+MPUData incomingData;
+
+// Callback for ESP-NOW reception (NEW FORMAT for ESP32 core v3.x)
+void OnDataRecv(const esp_now_recv_info *info, const uint8_t *data, int len) {
+  if (len == sizeof(MPUData)) {
+    memcpy(&incomingData, data, sizeof(incomingData));
+    Serial.print("Roll: ");  Serial.print(incomingData.roll);
+    Serial.print("\tPitch: "); Serial.print(incomingData.pitch);
+    Serial.print("\tYaw: ");   Serial.println(incomingData.yaw);
+  } else {
+    Serial.println("Received invalid data size");
+  }
+}
+
+void setup() {
+  Serial.begin(115200);
+  WiFi.mode(WIFI_STA);
+  Serial.println("\n\nInitializing ESP-NOW receiver...");
+
+  // Init ESP-NOW
+  if (esp_now_init() != ESP_OK) {
+    Serial.println("ESP-NOW initialization failed!");
+    return;
+  }
+
+  // Register callback (new API)
+  esp_now_register_recv_cb(OnDataRecv);
+
+  Serial.println("✅ ESP-NOW ready. Waiting for MPU data...");
+}
+
+void loop() {
+  // Nothing here — data arrives via ESP-NOW interrupt
+}

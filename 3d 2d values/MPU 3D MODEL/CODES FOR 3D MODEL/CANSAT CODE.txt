@@ -1,0 +1,90 @@
+#include <WiFi.h>
+#include <esp_now.h>
+#include <Wire.h>
+#include <Adafruit_MPU6050.h>
+#include <Adafruit_Sensor.h>
+
+// Create MPU object
+Adafruit_MPU6050 mpu;
+
+// Define receiver MAC address (replace with your receiver’s MAC)28:56:2f:49:da:68
+uint8_t receiverAddress[] = {0x28, 0x56, 0x2f, 0x49, 0xda, 0x68};
+
+// Data structure to send
+typedef struct {
+  float roll;
+  float pitch;
+  float yaw;
+} MPUData;
+
+MPUData mpuData;
+
+// --- ESP-NOW Send Callback
+void OnDataSent(const wifi_tx_info_t *info, esp_now_send_status_t status) {
+  Serial.print("Send Status: ");
+  if (status == ESP_NOW_SEND_SUCCESS)
+    Serial.println("✅ Delivery Success");
+  else
+    Serial.println("❌ Delivery Fail");
+}
+
+// --- Initialize MPU6050 ---
+void initMPU() {
+  if (!mpu.begin()) {
+    Serial.println("MPU6050 not found!");
+    while (1);
+  }
+  Serial.println("MPU6050 initialized.");
+  mpu.setAccelerometerRange(MPU6050_RANGE_8_G);
+  mpu.setGyroRange(MPU6050_RANGE_500_DEG);
+  mpu.setFilterBandwidth(MPU6050_BAND_21_HZ);
+  delay(100);
+}
+
+void setup() {
+  Serial.begin(115200);
+  WiFi.mode(WIFI_STA);
+  Serial.println("\n\nInitializing ESP-NOW sender...");
+
+  initMPU();
+
+  // Init ESP-NOW
+  if (esp_now_init() != ESP_OK) {
+    Serial.println("ESP-NOW Init Failed!");
+    return;
+  }
+
+  // Register send callback
+  esp_now_register_send_cb(OnDataSent);
+
+  // Register peer
+  esp_now_peer_info_t peerInfo = {};
+  memcpy(peerInfo.peer_addr, receiverAddress, 6);
+  peerInfo.channel = 0;
+  peerInfo.encrypt = false;
+
+  if (esp_now_add_peer(&peerInfo) != ESP_OK) {
+    Serial.println("Failed to add peer");
+    return;
+  }
+
+  Serial.println("✅ ESP-NOW ready. Sending MPU data...");
+}
+
+void loop() {
+  sensors_event_t a, g, temp;
+  mpu.getEvent(&a, &g, &temp);
+
+  // Calculate simple orientation
+  mpuData.roll  = atan2(a.acceleration.y, a.acceleration.z) * 180 / PI;
+  mpuData.pitch = atan(-a.acceleration.x / sqrt(a.acceleration.y * a.acceleration.y + a.acceleration.z * a.acceleration.z)) * 180 / PI;
+  mpuData.yaw   = g.gyro.z; // simplified yaw
+
+  // --- PRINT FOR MATLAB (text format)
+  Serial.printf("ROLL=%.2f PITCH=%.2f YAW=%.2f\n", mpuData.roll, mpuData.pitch, mpuData.yaw);
+
+  // Optional: send via ESP-NOW
+  esp_now_send(receiverAddress, (uint8_t *)&mpuData, sizeof(mpuData));
+
+  delay(200); // 5 Hz update rate
+}

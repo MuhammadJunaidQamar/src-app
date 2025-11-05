@@ -37,6 +37,7 @@ dependencies:
   cupertino_icons: ^1.0.8
   fl_chart: ^0.69.0
   http: ^1.2.2
+  web_socket_channel: ^3.0.1
   awesome_snackbar_content: ^0.1.4
   bitsdojo_window: ^0.1.6
   mapbox_maps_flutter: ^2.3.0
