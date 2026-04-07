@@ -8,9 +8,10 @@ import 'package:src/model/model.dart';
 import 'package:src/view_model/view_model.dart';
 import 'package:three_js/three_js.dart' as three;
 
-/// Single [ThreeJS] view: [plane.glb] (telemetry) + [globe.glb] (idle spin /
-/// drag) in one scene. Two separate `ThreeJS` widgets fail on many Windows
-/// ANGLE setups; one texture always composites correctly.
+enum _GlobeMode { pausing, touring, free }
+
+/// Single [ThreeJS] view: [plane.glb] (telemetry) + [globe.glb] (guided tour /
+/// drag) in one scene.
 class SpatialObjectWidget extends StatefulWidget {
   const SpatialObjectWidget({super.key});
 
@@ -24,8 +25,12 @@ class _SpatialObjectWidgetState extends State<SpatialObjectWidget> {
   static const double _minPx = 16.0;
   static const double _sizeTol = 20.0;
 
-  /// Screen Y fraction above which drags rotate the globe (lower part of card).
-  static const double _globeDragZoneTop = 0.52;
+  // ── Tour waypoints ──────────────────────────────────────────────────────────
+  // 4 "featured locations" spread around the globe, each with a slight X tilt.
+  static const List<double> _kTourY = [0.0, 1.6, 3.2, 4.8];
+  static const List<double> _kTourX = [0.08, -0.06, 0.10, -0.04];
+  static const double _kLegDur   = 3.5; // seconds to animate between stops
+  static const double _kPauseDur = 2.5; // seconds paused at each stop
 
   three.ThreeJS? _js;
   three.Object3D? _planeRoot;
@@ -38,18 +43,43 @@ class _SpatialObjectWidgetState extends State<SpatialObjectWidget> {
   String? _error;
   StreamSubscription<Model>? _sub;
   Timer? _watchdog;
-  Timer? _resumeGlobeSpin;
 
-  bool _globeIdleSpin = true;
-  bool _draggingGlobe = false;
+  // ── Globe animation state ───────────────────────────────────────────────────
+  _GlobeMode _gMode = _GlobeMode.pausing;
+  int    _stopIdx = 0;
+  double _tourT   = 0.0;   // 0..1 progress during TOURING
+  double _pauseT  = 0.0;   // elapsed s during PAUSING
+  double _fromY   = 0.0, _toY = 0.0;
+  double _fromX   = 0.0, _toX = 0.08;
+  double _velY    = 0.0, _velX = 0.0;
+  bool   _dragging = false;
+  Timer? _resumeTimer;
+  DateTime? _lastPanTime;
 
+  // ── Math helpers ────────────────────────────────────────────────────────────
+  static double _easeInOut(double t) {
+    if (t < 0.5) return 4 * t * t * t;
+    final f = -2 * t + 2;
+    return 1 - (f * f * f) / 2;
+  }
+
+  /// Returns the angle equivalent to [to] that is closest to [from]
+  /// (shortest arc, avoids spinning the wrong way around).
+  static double _shortArc(double from, double to) {
+    var d = (to - from) % (2 * math.pi);
+    if (d >  math.pi) d -= 2 * math.pi;
+    if (d < -math.pi) d += 2 * math.pi;
+    return from + d;
+  }
+
+  // ── Telemetry helpers ───────────────────────────────────────────────────────
   static ({double roll, double pitch, bool ok}) _tiltFromAccel(Acceleration a) {
     final denom = math.sqrt(a.y * a.y + a.z * a.z);
     if (denom < 1e-4) return (roll: 0.0, pitch: 0.0, ok: false);
     return (
-      roll: math.atan2(a.y, a.z),
+      roll:  math.atan2(a.y, a.z),
       pitch: math.atan2(-a.x, denom),
-      ok: true,
+      ok:    true,
     );
   }
 
@@ -65,7 +95,7 @@ class _SpatialObjectWidgetState extends State<SpatialObjectWidget> {
     final accel = model.acceleration;
     if (accel == null) return;
     final tilt = _tiltFromAccel(accel);
-    _targetRoll = tilt.roll;
+    _targetRoll  = tilt.roll;
     _targetPitch = tilt.pitch;
     final mag = model.distance;
     if (mag != null && tilt.ok) {
@@ -76,11 +106,7 @@ class _SpatialObjectWidgetState extends State<SpatialObjectWidget> {
     }
   }
 
-
-  // Correct centering + scaling using nested groups so there is no
-  // position/scale interaction:
-  //   inner: model shifted so its bounding-box centre is at inner-origin
-  //   outer: uniform scale + world position
+  // ── Scene helpers ───────────────────────────────────────────────────────────
   three.Group _normalise(three.Object3D model, double targetSize) {
     final box = three.BoundingBox()..setFromObject(model);
     final center = three.Vector3();
@@ -90,37 +116,35 @@ class _SpatialObjectWidgetState extends State<SpatialObjectWidget> {
     final maxDim = math.max(1e-6, math.max(sz.x, math.max(sz.y, sz.z)));
     final s = targetSize / maxDim;
 
-    // shift model so its centroid sits at the inner group's origin
     model.position.x -= center.x;
     model.position.y -= center.y;
     model.position.z -= center.z;
 
     final inner = three.Group()..add(model);
-
-    // scale is on the outer group — never mixes with position offsets
     final outer = three.Group();
     outer.scale.setValues(s, s, s);
     outer.add(inner);
     return outer;
   }
 
+  // ── Scene setup ─────────────────────────────────────────────────────────────
   Future<void> _setupScene() async {
     final tj = _js;
     if (tj == null) return;
 
-    // Camera at z=10, FoV=55°: sees ±10*tan(27.5°) ≈ ±5.2 units vertically.
-    // Plane will live at y=+1.8, globe at y=-1.8 → both safely in frame.
+    // Camera looks down at the top of the massive globe — only the upper
+    // hemisphere is visible, cropped at the bottom (matches reference site).
     tj.camera = three.PerspectiveCamera(
-      55,
+      60,
       tj.width / math.max(tj.height, 1),
       0.1,
       300,
     );
-    tj.camera.position.setValues(0, 0, 10.0);
-    tj.camera.lookAt(three.Vector3(0, 0, 0));
+    tj.camera.position.setValues(0, 3.0, 9.0);
+    tj.camera.lookAt(three.Vector3(0, -1.0, 0));
 
     tj.scene = three.Scene();
-    tj.scene.background = three.Color.fromHex32(0x16213e);
+    tj.scene.background = three.Color.fromHex32(0x0d1b2e);
     tj.scene.add(three.HemisphereLight(0xb8c6ff, 0x1a2233, 0.8));
     tj.scene.add(three.AmbientLight(0xffffff, 0.6));
     tj.scene.add(
@@ -130,11 +154,8 @@ class _SpatialObjectWidgetState extends State<SpatialObjectWidget> {
       three.DirectionalLight(0xaaccff, 0.5)..position.setValues(-4, 2, -3),
     );
 
-    // ── Divider line so we can always see the split ────────────────────────
-    // (a thin bright ring at y=0 — purely diagnostic, invisible background)
-
     try {
-      // ── Plane ──────────────────────────────────────────────────────────────
+      // ── Plane ───────────────────────────────────────────────────────────────
       final planeBytes =
           (await rootBundle.load(_planeAsset)).buffer.asUint8List();
       final planeGltf =
@@ -144,30 +165,25 @@ class _SpatialObjectWidgetState extends State<SpatialObjectWidget> {
         setState(() => _error = 'Plane GLB parse failed.');
         return;
       }
-      final planeNorm = _normalise(planeGltf.scene, 2.4);
-      planeNorm.position.y = 1.8;
+      final planeNorm = _normalise(planeGltf.scene, 1.6);
+      planeNorm.position.y = 3.8;
       tj.scene.add(planeNorm);
       _planeRoot = planeNorm;
 
-      // ── Globe slot: always put a bright wireframe sphere here first ────────
-      // If this sphere is visible we know the camera/position is correct.
+      // ── Globe placeholder ────────────────────────────────────────────────────
+      // Globe centre is well below the viewport — only the top hemisphere shows.
       final sphereGroup = three.Group();
-      sphereGroup.position.y = -1.8;
-
-      final sphere = three.Mesh(
-        three.SphereGeometry(1.0, 24, 16),
-        three.MeshBasicMaterial.fromMap({
-          'color': 0x2255cc,
-          'wireframe': true,
-        }),
-      );
-      sphereGroup.add(sphere);
+      sphereGroup.position.y = -5.5;
+      sphereGroup.add(three.Mesh(
+        three.SphereGeometry(5.5, 32, 20),
+        three.MeshBasicMaterial.fromMap({'color': 0x1a4488, 'wireframe': true}),
+      ));
       tj.scene.add(sphereGroup);
-      _globeRoot = sphereGroup; // spin target until GLB replaces it
+      _globeRoot = sphereGroup;
 
       if (mounted) setState(() => _globeStatus = 'Loading globe.glb…');
 
-      // ── Load real globe on top of the placeholder ──────────────────────────
+      // ── Load real globe ──────────────────────────────────────────────────────
       try {
         final globeBytes =
             (await rootBundle.load(_globeAsset)).buffer.asUint8List();
@@ -175,14 +191,11 @@ class _SpatialObjectWidgetState extends State<SpatialObjectWidget> {
             await three.GLTFLoader(flipY: false).fromBytes(globeBytes);
         if (!mounted) return;
         if (globeGltf != null) {
-          final globeNorm = _normalise(globeGltf.scene, 2.2);
-
-          // replace sphere with real globe
+          final globeNorm = _normalise(globeGltf.scene, 11.0);
           tj.scene.remove(sphereGroup);
           final globeGroup = three.Group();
-          globeGroup.position.y = -1.8;
+          globeGroup.position.y = -5.5;
           globeGroup.add(globeNorm);
-
           tj.scene.add(globeGroup);
           _globeRoot = globeGroup;
           if (mounted) setState(() => _globeStatus = 'globe.glb ✓');
@@ -194,21 +207,63 @@ class _SpatialObjectWidgetState extends State<SpatialObjectWidget> {
         if (mounted) setState(() => _globeStatus = 'sphere (globe err: $e)');
       }
 
-      // ── Animation ──────────────────────────────────────────────────────────
+      // ── Animation loop ───────────────────────────────────────────────────────
       _sceneReady = true;
       _watchdog?.cancel();
-      const smooth = 0.22;
+      const planeSmooth = 0.22;
+
       tj.addAnimationEvent((double dt) {
+        final ddt = dt.clamp(0.001, 0.05);
+
+        // Plane: smooth follow of telemetry
         final p = _planeRoot;
         if (p != null) {
           p.rotation.order = three.RotationOrders.xyz;
-          p.rotation.x += (_targetRoll - p.rotation.x) * smooth;
-          p.rotation.y += (_targetPitch - p.rotation.y) * smooth;
-          p.rotation.z += (_targetYaw - p.rotation.z) * smooth;
+          p.rotation.x += (_targetRoll  - p.rotation.x) * planeSmooth;
+          p.rotation.y += (_targetPitch - p.rotation.y) * planeSmooth;
+          p.rotation.z += (_targetYaw   - p.rotation.z) * planeSmooth;
         }
+
+        // Globe: tour state machine
         final g = _globeRoot;
-        if (g != null && _globeIdleSpin && !_draggingGlobe) {
-          g.rotation.y += dt * 0.22;
+        if (g == null) return;
+
+        if (_dragging) {
+          // Velocity is set from pan events; just apply it.
+          g.rotation.y += _velY * ddt;
+          g.rotation.x = (g.rotation.x + _velX * ddt).clamp(-1.1, 1.1);
+        } else if (_gMode == _GlobeMode.free) {
+          // Coast with exponential friction (half-life ≈ 0.7 s)
+          final decay = math.pow(0.5, ddt / 0.7) as double;
+          _velY *= decay;
+          _velX *= decay;
+          g.rotation.y += _velY * ddt;
+          g.rotation.x = (g.rotation.x + _velX * ddt).clamp(-1.1, 1.1);
+        } else if (_gMode == _GlobeMode.pausing) {
+          // Hold at current stop; count down to next leg
+          _pauseT += ddt;
+          if (_pauseT >= _kPauseDur) {
+            _stopIdx = (_stopIdx + 1) % _kTourY.length;
+            _fromY = g.rotation.y;
+            _fromX = g.rotation.x;
+            _toY   = _shortArc(_fromY, _kTourY[_stopIdx]);
+            _toX   = _kTourX[_stopIdx];
+            _tourT = 0.0;
+            _gMode = _GlobeMode.touring;
+          }
+        } else {
+          // TOURING: ease-in-out interpolation toward next stop
+          _tourT += ddt / _kLegDur;
+          if (_tourT >= 1.0) {
+            g.rotation.y = _toY;
+            g.rotation.x = _toX;
+            _gMode  = _GlobeMode.pausing;
+            _pauseT = 0.0;
+          } else {
+            final t = _easeInOut(_tourT);
+            g.rotation.y = _fromY + (_toY - _fromY) * t;
+            g.rotation.x = _fromX + (_toX - _fromX) * t;
+          }
         }
       });
 
@@ -219,6 +274,7 @@ class _SpatialObjectWidgetState extends State<SpatialObjectWidget> {
     }
   }
 
+  // ── Viewer lifecycle ─────────────────────────────────────────────────────────
   void _ensureViewer(Size size) {
     if (_sameSize(_viewerSize, size)) return;
     _viewerSize = size;
@@ -234,7 +290,7 @@ class _SpatialObjectWidgetState extends State<SpatialObjectWidget> {
       renderNumber: 0,
       settings: three.Settings(
         antialias: true,
-        clearColor: 0x16213e,
+        clearColor: 0x0d1b2e,
         clearAlpha: 1.0,
       ),
       onSetupComplete: () {
@@ -254,35 +310,51 @@ class _SpatialObjectWidgetState extends State<SpatialObjectWidget> {
         (old.height - next.height).abs() < _sizeTol;
   }
 
-  bool _isGlobeDragZone(Offset local) {
-    final h = _viewerSize?.height ?? 0;
-    if (h <= 0) return false;
-    return local.dy > h * _globeDragZoneTop;
-  }
-
+  // ── Drag handlers ────────────────────────────────────────────────────────────
   void _onPanStart(DragStartDetails d) {
-    if (!_isGlobeDragZone(d.localPosition)) return;
-    _draggingGlobe = true;
-    _globeIdleSpin = false;
-    _resumeGlobeSpin?.cancel();
+    _dragging = true;
+    _gMode = _GlobeMode.free; // leave tour mode
+    _resumeTimer?.cancel();
+    _lastPanTime = DateTime.now();
   }
 
   void _onPanUpdate(DragUpdateDetails d) {
-    final g = _globeRoot;
-    if (g == null || !_draggingGlobe) return;
-    g.rotation.y += d.delta.dx * 0.01;
-    g.rotation.x = (g.rotation.x + d.delta.dy * 0.008).clamp(-1.1, 1.1);
+    if (!_dragging) return;
+    final now = DateTime.now();
+    final eventDt = _lastPanTime != null
+        ? now.difference(_lastPanTime!).inMicroseconds / 1e6
+        : 0.016;
+    _lastPanTime = now;
+    final safeDt = eventDt.clamp(0.004, 0.1);
+    _velY = (d.delta.dx / safeDt) * 0.012;
+    _velX = (d.delta.dy / safeDt) * 0.009;
   }
 
-  void _onPanEnd(DragEndDetails d) {
-    if (!_draggingGlobe) return;
-    _draggingGlobe = false;
-    _resumeGlobeSpin?.cancel();
-    _resumeGlobeSpin = Timer(const Duration(milliseconds: 1600), () {
-      if (mounted) setState(() => _globeIdleSpin = true);
+  void _onPanEnd(DragEndDetails details) {
+    if (!_dragging) return;
+    _dragging = false;
+    _lastPanTime = null;
+    // Hand off Flutter's fling velocity for realistic momentum
+    final fling = details.velocity.pixelsPerSecond;
+    _velY = (fling.dx * 0.012).clamp(-8.0, 8.0);
+    _velX = (fling.dy * 0.009).clamp(-5.0, 5.0);
+    _gMode = _GlobeMode.free;
+    // Resume tour 3 s after the user stops interacting
+    _resumeTimer?.cancel();
+    _resumeTimer = Timer(const Duration(seconds: 3), () {
+      if (!mounted) return;
+      final g = _globeRoot;
+      if (g == null) return;
+      _fromY  = g.rotation.y;
+      _fromX  = g.rotation.x;
+      _toY    = _shortArc(_fromY, _kTourY[_stopIdx]);
+      _toX    = _kTourX[_stopIdx];
+      _tourT  = 0.0;
+      _gMode  = _GlobeMode.touring;
     });
   }
 
+  // ── Flutter lifecycle ────────────────────────────────────────────────────────
   @override
   void initState() {
     super.initState();
@@ -295,7 +367,7 @@ class _SpatialObjectWidgetState extends State<SpatialObjectWidget> {
   @override
   void dispose() {
     _watchdog?.cancel();
-    _resumeGlobeSpin?.cancel();
+    _resumeTimer?.cancel();
     _sub?.cancel();
     _js?.dispose();
     three.loading.clear();
@@ -313,16 +385,10 @@ class _SpatialObjectWidgetState extends State<SpatialObjectWidget> {
         final js = _js;
 
         return GestureDetector(
-          onPanStart: _onPanStart,
+          onPanStart:  _onPanStart,
           onPanUpdate: _onPanUpdate,
-          onPanEnd: _onPanEnd,
-          onPanCancel: () {
-            _draggingGlobe = false;
-            _resumeGlobeSpin?.cancel();
-            _resumeGlobeSpin = Timer(const Duration(milliseconds: 1600), () {
-              if (mounted) setState(() => _globeIdleSpin = true);
-            });
-          },
+          onPanEnd:    _onPanEnd,
+          onPanCancel: () => _onPanEnd(DragEndDetails()),
           child: Stack(
             fit: StackFit.expand,
             children: [
@@ -331,38 +397,33 @@ class _SpatialObjectWidgetState extends State<SpatialObjectWidget> {
                 const Center(child: CircularProgressIndicator()),
               if (_error != null)
                 Positioned(
-                  top: 8,
-                  left: 8,
-                  right: 8,
+                  top: 8, left: 8, right: 8,
                   child: Material(
                     color: Colors.red.shade900,
                     child: Padding(
                       padding: const EdgeInsets.all(8),
                       child: Text(
                         _error!,
-                        style: const TextStyle(color: Colors.white, fontSize: 12),
+                        style: const TextStyle(
+                            color: Colors.white, fontSize: 12),
                       ),
                     ),
                   ),
                 ),
               Positioned(
-                left: 10,
-                bottom: 8,
+                left: 10, bottom: 8,
                 child: Text(
                   _globeStatus ?? '…',
                   style: const TextStyle(
-                    color: Colors.white38,
-                    fontSize: 11,
-                  ),
+                      color: Colors.white38, fontSize: 11),
                 ),
               ),
               Positioned(
-                right: 10,
-                bottom: 8,
+                right: 10, bottom: 8,
                 child: Text(
-                  'drag lower area = globe',
+                  'click and drag to interact',
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.25),
+                    color: Colors.white.withValues(alpha: 0.30),
                     fontSize: 10,
                   ),
                 ),
