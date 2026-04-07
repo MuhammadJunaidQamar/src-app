@@ -26,9 +26,15 @@ class _SpatialObjectWidgetState extends State<SpatialObjectWidget> {
   static const double _sizeTol = 20.0;
 
   // ── Tour waypoints ──────────────────────────────────────────────────────────
-  // 4 "featured locations" spread around the globe, each with a slight X tilt.
-  static const List<double> _kTourY = [0.0, 1.6, 3.2, 4.8];
-  static const List<double> _kTourX = [0.08, -0.06, 0.10, -0.04];
+  // 4 stops exactly 90° apart — looks intentional, not random.
+  // X tilts give each stop a distinct viewing angle (like the reference site).
+  static const List<double> _kTourY = [
+    0.0,                  // stop 0
+    math.pi / 2,          // stop 1  +90°
+    math.pi,              // stop 2  +180°
+    3 * math.pi / 2,      // stop 3  +270°
+  ];
+  static const List<double> _kTourX = [0.12, -0.08, 0.10, -0.05];
   static const double _kLegDur   = 3.5; // seconds to animate between stops
   static const double _kPauseDur = 2.5; // seconds paused at each stop
 
@@ -55,6 +61,8 @@ class _SpatialObjectWidgetState extends State<SpatialObjectWidget> {
   bool   _dragging = false;
   Timer? _resumeTimer;
   DateTime? _lastPanTime;
+  Timer? _debugTimer;
+  double _debugY = 0, _debugX = 0;
 
   // ── Math helpers ────────────────────────────────────────────────────────────
   static double _easeInOut(double t) {
@@ -362,12 +370,22 @@ class _SpatialObjectWidgetState extends State<SpatialObjectWidget> {
     final cached = vm.latestData;
     if (cached != null) _applyTelemetry(cached);
     _sub = vm.dataStream.listen(_applyTelemetry);
+    // Refresh debug angle display ~10 times/s
+    _debugTimer = Timer.periodic(const Duration(milliseconds: 100), (_) {
+      final g = _globeRoot;
+      if (g == null || !mounted) return;
+      setState(() {
+        _debugY = g.rotation.y * 180 / math.pi;
+        _debugX = g.rotation.x * 180 / math.pi;
+      });
+    });
   }
 
   @override
   void dispose() {
     _watchdog?.cancel();
     _resumeTimer?.cancel();
+    _debugTimer?.cancel();
     _sub?.cancel();
     _js?.dispose();
     three.loading.clear();
@@ -384,38 +402,47 @@ class _SpatialObjectWidgetState extends State<SpatialObjectWidget> {
         }
         final js = _js;
 
-        return GestureDetector(
-          onPanStart:  _onPanStart,
-          onPanUpdate: _onPanUpdate,
-          onPanEnd:    _onPanEnd,
-          onPanCancel: () => _onPanEnd(DragEndDetails()),
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              if (js != null) Positioned.fill(child: js.build()),
-              if (js == null)
-                const Center(child: CircularProgressIndicator()),
-              if (_error != null)
-                Positioned(
-                  top: 8, left: 8, right: 8,
-                  child: Material(
-                    color: Colors.red.shade900,
-                    child: Padding(
-                      padding: const EdgeInsets.all(8),
-                      child: Text(
-                        _error!,
-                        style: const TextStyle(
-                            color: Colors.white, fontSize: 12),
-                      ),
+        return Stack(
+          fit: StackFit.expand,
+          children: [
+            // 3D scene (three_js has its own internal GestureDetector which
+            // would consume events — our capture layer below sits on top)
+            if (js != null) Positioned.fill(child: js.build()),
+            if (js == null)
+              const Center(child: CircularProgressIndicator()),
+            if (_error != null)
+              Positioned(
+                top: 8, left: 8, right: 8,
+                child: Material(
+                  color: Colors.red.shade900,
+                  child: Padding(
+                    padding: const EdgeInsets.all(8),
+                    child: Text(
+                      _error!,
+                      style: const TextStyle(
+                          color: Colors.white, fontSize: 12),
                     ),
                   ),
                 ),
+              ),
+            Positioned(
+              left: 10, bottom: 8,
+              child: Text(
+                _globeStatus ?? '…',
+                style: const TextStyle(
+                    color: Colors.white38, fontSize: 11),
+              ),
+            ),
+              // ── DEBUG: drag to desired stop, note Y° value, report to dev ──
               Positioned(
-                left: 10, bottom: 8,
+                right: 10, top: 8,
                 child: Text(
-                  _globeStatus ?? '…',
+                  'Y:${_debugY.toStringAsFixed(1)}°  X:${_debugX.toStringAsFixed(1)}°',
                   style: const TextStyle(
-                      color: Colors.white38, fontSize: 11),
+                    color: Colors.yellowAccent,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
               Positioned(
@@ -428,8 +455,18 @@ class _SpatialObjectWidgetState extends State<SpatialObjectWidget> {
                   ),
                 ),
               ),
-            ],
-          ),
+            // Transparent gesture capture layer — must be last (on top) so
+            // it intercepts events before three_js's internal handler does.
+            Positioned.fill(
+              child: GestureDetector(
+                behavior: HitTestBehavior.translucent,
+                onPanStart:  _onPanStart,
+                onPanUpdate: _onPanUpdate,
+                onPanEnd:    _onPanEnd,
+                onPanCancel: () => _onPanEnd(DragEndDetails()),
+              ),
+            ),
+          ],
         );
       },
     );
