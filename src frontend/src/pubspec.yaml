@@ -43,6 +43,7 @@ dependencies:
   mapbox_maps_flutter: ^2.3.0
   flutter_inappwebview: ^6.1.5
   mjpeg_stream: ^1.0.1
+  three_js: ^0.2.7
 
 dev_dependencies:
   flutter_test:
@@ -70,6 +71,8 @@ flutter:
   assets:
     - assets/icons/satellite.png
     - assets/webview/mapbox_map.html
+    - assets/3d object/plane.glb
+    - assets/3d object/globe.glb
     - assets/images/
   #   - images/a_dot_burr.jpeg
   #   - images/a_dot_ham.jpeg

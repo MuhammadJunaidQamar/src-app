@@ -7,12 +7,16 @@ class CustomCard extends StatelessWidget {
   final EdgeInsetsGeometry? padding;
   final EdgeInsetsGeometry? margin;
 
+  /// Use for children that need tight constraints (e.g. [Expanded] inside).
+  final bool expandChild;
+
   const CustomCard({
     super.key,
     this.color,
     this.padding,
     required this.child,
     this.margin,
+    this.expandChild = false,
   });
 
   @override
@@ -30,7 +34,7 @@ class CustomCard extends StatelessWidget {
         ),
         color: color ?? AppColors.cardBackgroundColor,
       ),
-      child: Center(child: child),
+      child: expandChild ? child : Center(child: child),
     );
   }
 }

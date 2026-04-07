@@ -28,6 +28,7 @@ class OrientationLayout extends StatelessWidget {
                 const HeaderWidget(),
                 Expanded(
                   child: CustomCard(
+                    expandChild: true,
                     child: SpatialObjectWidget(),
                   ),
                 ),
