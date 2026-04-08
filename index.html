@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Globe Stop Finder</title>
+  <style>
+    html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: #0d1b2e; }
+    canvas { display: block; }
+
+    #panel {
+      position: fixed; top: 10px; left: 10px;
+      color: white; background: rgba(0,0,0,0.75);
+      padding: 12px 16px; border-radius: 10px;
+      font-family: Arial, sans-serif; font-size: 14px;
+      min-width: 260px; z-index: 10;
+    }
+    #panel h3 { margin: 0 0 8px; font-size: 15px; color: #ffd700; }
+    #angles { font-size: 16px; font-weight: bold; color: #7ef; margin-bottom: 10px; }
+    #stops { margin-top: 8px; }
+    .stop-line { margin: 3px 0; font-size: 13px; color: #aef; }
+    button {
+      background: #2a7af2; color: white; border: none;
+      padding: 8px 16px; border-radius: 6px; cursor: pointer;
+      font-size: 13px; margin-right: 6px; margin-top: 4px;
+    }
+    button:hover { background: #4a9af4; }
+    #clearBtn { background: #c0392b; }
+    #clearBtn:hover { background: #e74c3c; }
+    #hint { font-size: 11px; color: #888; margin-top: 8px; }
+  </style>
+</head>
+<body>
+
+<div id="panel">
+  <h3>Globe Stop Finder</h3>
+  <div id="angles">Y: 0.0°&nbsp;&nbsp;X: 0.0°</div>
+  <button id="recordBtn">📍 Record Stop</button>
+  <button id="clearBtn">Clear</button>
+  <div id="stops"></div>
+  <div id="hint">Drag to rotate. Record 4 stops, then tell the values to your AI assistant.</div>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+  import * as THREE from 'three';
+  import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+  const anglesEl = document.getElementById('angles');
+  const stopsEl  = document.getElementById('stops');
+  const recordBtn = document.getElementById('recordBtn');
+  const clearBtn  = document.getElementById('clearBtn');
+
+  // ── Scene ──────────────────────────────────────────────────────────────────
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x0d1b2e);
+
+  const camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.1, 1000);
+  camera.position.set(0, 3, 9);
+  camera.lookAt(0, -1, 0);
+
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setSize(innerWidth, innerHeight);
+  renderer.setPixelRatio(devicePixelRatio);
+  document.body.appendChild(renderer.domElement);
+
+  scene.add(new THREE.AmbientLight(0xffffff, 1.0));
+  const dir = new THREE.DirectionalLight(0xffffff, 1.5);
+  dir.position.set(4, 8, 6);
+  scene.add(dir);
+
+  // ── Globe ──────────────────────────────────────────────────────────────────
+  const globeGroup = new THREE.Group();
+  globeGroup.position.y = -5.5;
+  scene.add(globeGroup);
+
+  const loader = new GLTFLoader();
+  loader.load('./globe.glb',
+    (gltf) => {
+      const model = gltf.scene;
+      const box = new THREE.Box3().setFromObject(model);
+      const center = new THREE.Vector3();
+      box.getCenter(center);
+      const size = new THREE.Vector3();
+      box.getSize(size);
+      const maxDim = Math.max(size.x, size.y, size.z);
+      const scale  = 11.0 / maxDim;
+
+      model.position.sub(center);
+      const inner = new THREE.Group();
+      inner.add(model);
+      const outer = new THREE.Group();
+      outer.scale.setScalar(scale);
+      outer.add(inner);
+      globeGroup.add(outer);
+      anglesEl.textContent = 'Globe loaded — drag to rotate';
+    },
+    undefined,
+    (e) => { anglesEl.textContent = 'Error: ' + e.message; }
+  );
+
+  // ── Drag to rotate the GLOBE (not the camera) ──────────────────────────────
+  let dragging = false, lastX = 0, lastY = 0;
+
+  renderer.domElement.addEventListener('mousedown', e => {
+    dragging = true; lastX = e.clientX; lastY = e.clientY;
+  });
+  renderer.domElement.addEventListener('mousemove', e => {
+    if (!dragging) return;
+    const dx = e.clientX - lastX;
+    const dy = e.clientY - lastY;
+    lastX = e.clientX; lastY = e.clientY;
+    globeGroup.rotation.y += dx * 0.008;
+    globeGroup.rotation.x = Math.max(-1.1, Math.min(1.1,
+      globeGroup.rotation.x + dy * 0.006));
+  });
+  window.addEventListener('mouseup', () => dragging = false);
+
+  // Touch support
+  renderer.domElement.addEventListener('touchstart', e => {
+    dragging = true;
+    lastX = e.touches[0].clientX; lastY = e.touches[0].clientY;
+  });
+  renderer.domElement.addEventListener('touchmove', e => {
+    if (!dragging) return;
+    const dx = e.touches[0].clientX - lastX;
+    const dy = e.touches[0].clientY - lastY;
+    lastX = e.touches[0].clientX; lastY = e.touches[0].clientY;
+    globeGroup.rotation.y += dx * 0.008;
+    globeGroup.rotation.x = Math.max(-1.1, Math.min(1.1,
+      globeGroup.rotation.x + dy * 0.006));
+    e.preventDefault();
+  }, { passive: false });
+  window.addEventListener('touchend', () => dragging = false);
+
+  // ── Record stops ───────────────────────────────────────────────────────────
+  let stops = [];
+  recordBtn.addEventListener('click', () => {
+    const y = (globeGroup.rotation.y * 180 / Math.PI).toFixed(1);
+    const x = (globeGroup.rotation.x * 180 / Math.PI).toFixed(1);
+    stops.push({ y, x });
+    stopsEl.innerHTML = stops.map((s, i) =>
+      `<div class="stop-line">Stop ${i+1}: Y=${s.y}°  X=${s.x}°</div>`
+    ).join('');
+  });
+  clearBtn.addEventListener('click', () => { stops = []; stopsEl.innerHTML = ''; });
+
+  // ── Render loop ────────────────────────────────────────────────────────────
+  function animate() {
+    requestAnimationFrame(animate);
+    // Show live angles
+    const y = (globeGroup.rotation.y * 180 / Math.PI).toFixed(1);
+    const x = (globeGroup.rotation.x * 180 / Math.PI).toFixed(1);
+    anglesEl.textContent = `Y: ${y}°    X: ${x}°`;
+    renderer.render(scene, camera);
+  }
+  animate();
+
+  window.addEventListener('resize', () => {
+    camera.aspect = innerWidth / innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(innerWidth, innerHeight);
+  });
+</script>
+</body>
+</html>

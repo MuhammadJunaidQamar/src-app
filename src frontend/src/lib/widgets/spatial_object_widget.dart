@@ -26,17 +26,19 @@ class _SpatialObjectWidgetState extends State<SpatialObjectWidget> {
   static const double _sizeTol = 20.0;
 
   // ── Tour waypoints ──────────────────────────────────────────────────────────
-  // 4 stops exactly 90° apart — looks intentional, not random.
-  // X tilts give each stop a distinct viewing angle (like the reference site).
-  static const List<double> _kTourY = [
-    0.0,                  // stop 0
-    math.pi / 2,          // stop 1  +90°
-    math.pi,              // stop 2  +180°
-    3 * math.pi / 2,      // stop 3  +270°
-  ];
-  static const List<double> _kTourX = [0.12, -0.08, 0.10, -0.05];
-  static const double _kLegDur   = 3.5; // seconds to animate between stops
-  static const double _kPauseDur = 2.5; // seconds paused at each stop
+  // Exact tour stop Euler(x,y,z) angles from window.globePoints[n].camera
+  // in the original Google for Games site (globe.min.js + index.min.js):
+  //   [0] "Create great games"    camera {x:0.6527, y:-0.5919, z:-2.8375}
+  //   [1] "Connect with players"  camera {x:0.1363, y:-0.4650, z:-0.4580}
+  //   [2] "Scale your business"   camera {x:-1.1633, y:-1.0955, z:0.0837}
+  // Tour cycles indices 0 → 1 → 2 → 0 ...
+  // Source auto-rotate while pausing: x-=0.001/frame, y+=0.001/frame @ 60fps
+  static const List<double> _kTourX = [ 0.6527269923798689,  0.13631450928350594, -1.1633540169219667];
+  static const List<double> _kTourY = [-0.5919802501399659, -0.4650123639393026,  -1.095540980468304];
+  static const List<double> _kTourZ = [-2.837507483903454,  -0.458015913995041,    0.08377304089994568];
+  // Source: rotationTime = 1000 ms, easing = Quadratic.InOut
+  static const double _kLegDur   = 1.0; // 1 second — matches rotationTime
+  static const double _kPauseDur = 3.0; // pause at each stop
 
   three.ThreeJS? _js;
   three.Object3D? _planeRoot;
@@ -55,8 +57,10 @@ class _SpatialObjectWidgetState extends State<SpatialObjectWidget> {
   int    _stopIdx = 0;
   double _tourT   = 0.0;   // 0..1 progress during TOURING
   double _pauseT  = 0.0;   // elapsed s during PAUSING
-  double _fromY   = 0.0, _toY = 0.0;
-  double _fromX   = 0.0, _toX = 0.08;
+  // Quaternion SLERP — matches website's THREE.Quaternion.slerp usage
+  // Dart three_js uses instance .slerp(qb, t) not the static 4-arg form.
+  three.Quaternion _fromQuat = three.Quaternion(0, 0, 0, 1);
+  three.Quaternion _toQuat   = three.Quaternion(0, 0, 0, 1);
   double _velY    = 0.0, _velX = 0.0;
   bool   _dragging = false;
   Timer? _resumeTimer;
@@ -65,10 +69,10 @@ class _SpatialObjectWidgetState extends State<SpatialObjectWidget> {
   double _debugY = 0, _debugX = 0;
 
   // ── Math helpers ────────────────────────────────────────────────────────────
+  /// Quadratic InOut — matches the website's Q.Easing.Quadratic.InOut
   static double _easeInOut(double t) {
-    if (t < 0.5) return 4 * t * t * t;
-    final f = -2 * t + 2;
-    return 1 - (f * f * f) / 2;
+    if (t < 0.5) return 2 * t * t;
+    return -1 + (4 - 2 * t) * t;
   }
 
   /// Returns the angle equivalent to [to] that is closest to [from]
@@ -200,9 +204,21 @@ class _SpatialObjectWidgetState extends State<SpatialObjectWidget> {
         if (!mounted) return;
         if (globeGltf != null) {
           final globeNorm = _normalise(globeGltf.scene, 11.0);
+          // Apply the same base rotation the website uses on the raw model:
+          //   c.rotation.set(-.3, .17, .78)  — from globe.min.js
+          globeNorm.rotation.x = -0.3;
+          globeNorm.rotation.y =  0.17;
+          globeNorm.rotation.z =  0.78;
+
           tj.scene.remove(sphereGroup);
           final globeGroup = three.Group();
           globeGroup.position.y = -5.5;
+          // Source setupGlobe: b.rotation.set(points[1].camera.x - 0.1,
+          //                                   points[1].camera.y - 0.1,
+          //                                   points[1].camera.z - 0.1)
+          globeGroup.rotation.x = _kTourX[0] - 0.1;
+          globeGroup.rotation.y = _kTourY[0] - 0.1;
+          globeGroup.rotation.z = _kTourZ[0] - 0.1;
           globeGroup.add(globeNorm);
           tj.scene.add(globeGroup);
           _globeRoot = globeGroup;
@@ -248,29 +264,43 @@ class _SpatialObjectWidgetState extends State<SpatialObjectWidget> {
           g.rotation.y += _velY * ddt;
           g.rotation.x = (g.rotation.x + _velX * ddt).clamp(-1.1, 1.1);
         } else if (_gMode == _GlobeMode.pausing) {
-          // Hold at current stop; count down to next leg
+          // Slow auto-rotate while at stop — matches source: x-=0.001, y+=0.001
+          // per frame @ 60fps → ~0.06 rad/s each axis
+          g.rotation.x -= 0.06 * ddt;
+          g.rotation.y += 0.06 * ddt;
           _pauseT += ddt;
           if (_pauseT >= _kPauseDur) {
             _stopIdx = (_stopIdx + 1) % _kTourY.length;
-            _fromY = g.rotation.y;
-            _fromX = g.rotation.x;
-            _toY   = _shortArc(_fromY, _kTourY[_stopIdx]);
-            _toX   = _kTourX[_stopIdx];
+            // Build quaternions for SLERP — matches website's rotateObject()
+            _fromQuat = three.Quaternion(0, 0, 0, 1)
+              ..setFromEuler(three.Euler(g.rotation.x, g.rotation.y, g.rotation.z));
+            _toQuat = three.Quaternion(0, 0, 0, 1)
+              ..setFromEuler(three.Euler(
+                  _kTourX[_stopIdx], _kTourY[_stopIdx], _kTourZ[_stopIdx]));
             _tourT = 0.0;
             _gMode = _GlobeMode.touring;
           }
         } else {
-          // TOURING: ease-in-out interpolation toward next stop
+          // TOURING: quaternion SLERP with Quadratic InOut — matches source
           _tourT += ddt / _kLegDur;
           if (_tourT >= 1.0) {
-            g.rotation.y = _toY;
-            g.rotation.x = _toX;
+            _tourT = 1.0;
+            final e = three.Euler()..setFromQuaternion(_toQuat);
+            g.rotation.x = e.x;
+            g.rotation.y = e.y;
+            g.rotation.z = e.z;
             _gMode  = _GlobeMode.pausing;
             _pauseT = 0.0;
           } else {
             final t = _easeInOut(_tourT);
-            g.rotation.y = _fromY + (_toY - _fromY) * t;
-            g.rotation.x = _fromX + (_toX - _fromX) * t;
+            // Instance .slerp(qb, t) — returns mutated copy of the receiver
+            final q = three.Quaternion(
+                _fromQuat.x, _fromQuat.y, _fromQuat.z, _fromQuat.w)
+              ..slerp(_toQuat, t);
+            final e = three.Euler()..setFromQuaternion(q);
+            g.rotation.x = e.x;
+            g.rotation.y = e.y;
+            g.rotation.z = e.z;
           }
         }
       });
@@ -353,10 +383,12 @@ class _SpatialObjectWidgetState extends State<SpatialObjectWidget> {
       if (!mounted) return;
       final g = _globeRoot;
       if (g == null) return;
-      _fromY  = g.rotation.y;
-      _fromX  = g.rotation.x;
-      _toY    = _shortArc(_fromY, _kTourY[_stopIdx]);
-      _toX    = _kTourX[_stopIdx];
+      // Build from-quaternion from current globe rotation
+      _fromQuat = three.Quaternion(0, 0, 0, 1)
+        ..setFromEuler(three.Euler(g.rotation.x, g.rotation.y, g.rotation.z));
+      _toQuat = three.Quaternion(0, 0, 0, 1)
+        ..setFromEuler(three.Euler(
+            _kTourX[_stopIdx], _kTourY[_stopIdx], _kTourZ[_stopIdx]));
       _tourT  = 0.0;
       _gMode  = _GlobeMode.touring;
     });
