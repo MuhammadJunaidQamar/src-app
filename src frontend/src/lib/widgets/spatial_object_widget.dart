@@ -55,12 +55,16 @@ class _SpatialObjectWidgetState extends State<SpatialObjectWidget> {
   // ── Globe animation state ───────────────────────────────────────────────────
   _GlobeMode _gMode = _GlobeMode.pausing;
   int    _stopIdx = 0;
-  double _tourT   = 0.0;   // 0..1 progress during TOURING
-  double _pauseT  = 0.0;   // elapsed s during PAUSING
-  // Quaternion SLERP — matches website's THREE.Quaternion.slerp usage
-  // Dart three_js uses instance .slerp(qb, t) not the static 4-arg form.
-  three.Quaternion _fromQuat = three.Quaternion(0, 0, 0, 1);
-  three.Quaternion _toQuat   = three.Quaternion(0, 0, 0, 1);
+  double _tourT   = 0.0;  // 0..1 progress during TOURING
+  double _pauseT  = 0.0;  // elapsed s during PAUSING
+
+  // _globeQuat is the AUTHORITATIVE orientation — always kept in sync.
+  // Tour, drag, coast, and auto-rotate all read/write this single quaternion.
+  three.Quaternion _globeQuat = three.Quaternion(0, 0, 0, 1);
+  // SLERP endpoints for tour transitions
+  three.Quaternion _fromQuat  = three.Quaternion(0, 0, 0, 1);
+  three.Quaternion _toQuat    = three.Quaternion(0, 0, 0, 1);
+
   double _velY    = 0.0, _velX = 0.0;
   bool   _dragging = false;
   Timer? _resumeTimer;
@@ -75,13 +79,22 @@ class _SpatialObjectWidgetState extends State<SpatialObjectWidget> {
     return -1 + (4 - 2 * t) * t;
   }
 
-  /// Returns the angle equivalent to [to] that is closest to [from]
-  /// (shortest arc, avoids spinning the wrong way around).
-  static double _shortArc(double from, double to) {
-    var d = (to - from) % (2 * math.pi);
-    if (d >  math.pi) d -= 2 * math.pi;
-    if (d < -math.pi) d += 2 * math.pi;
-    return from + d;
+  /// Deep-copy a quaternion into a fresh instance.
+  static three.Quaternion _quatCopy(three.Quaternion q) =>
+      three.Quaternion(q.x, q.y, q.z, q.w);
+
+  /// Manual dot product (four-component inner product of two unit quaternions).
+  static double _quatDot(three.Quaternion a, three.Quaternion b) =>
+      a.x * b.x + a.y * b.y + a.z * b.z + a.w * b.w;
+
+  /// Return a copy of [to] that is on the same hemisphere as [from],
+  /// guaranteeing the shortest-arc SLERP path (avoids the >180° spin).
+  static three.Quaternion _shortestArc(
+      three.Quaternion from, three.Quaternion to) {
+    if (_quatDot(from, to) < 0) {
+      return three.Quaternion(-to.x, -to.y, -to.z, -to.w);
+    }
+    return _quatCopy(to);
   }
 
   // ── Telemetry helpers ───────────────────────────────────────────────────────
@@ -139,6 +152,22 @@ class _SpatialObjectWidgetState extends State<SpatialObjectWidget> {
     return outer;
   }
 
+  /// Write _globeQuat back to the Object3D's Euler rotation.
+  void _applyGlobeQuat(three.Object3D g) {
+    final e = three.Euler()..setFromQuaternion(_globeQuat);
+    g.rotation.x = e.x;
+    g.rotation.y = e.y;
+    g.rotation.z = e.z;
+  }
+
+  /// Build a target quaternion for tour stop [idx] and ensure it is on the
+  /// same hemisphere as [from] for a shortest-arc SLERP.
+  three.Quaternion _tourTarget(int idx, three.Quaternion from) {
+    final raw = three.Quaternion(0, 0, 0, 1)
+      ..setFromEuler(three.Euler(_kTourX[idx], _kTourY[idx], _kTourZ[idx]));
+    return _shortestArc(from, raw);
+  }
+
   // ── Scene setup ─────────────────────────────────────────────────────────────
   Future<void> _setupScene() async {
     final tj = _js;
@@ -182,10 +211,9 @@ class _SpatialObjectWidgetState extends State<SpatialObjectWidget> {
       tj.scene.add(planeNorm);
       _planeRoot = planeNorm;
 
-      // ── Globe placeholder ────────────────────────────────────────────────────
-      // Globe centre is well below the viewport — only the top hemisphere shows.
+      // ── Globe placeholder (shown while globe.glb loads) ──────────────────
       final sphereGroup = three.Group();
-      sphereGroup.position.y = -5.5;
+      sphereGroup.position.y = -7.0;
       sphereGroup.add(three.Mesh(
         three.SphereGeometry(5.5, 32, 20),
         three.MeshBasicMaterial.fromMap({'color': 0x1a4488, 'wireframe': true}),
@@ -203,25 +231,33 @@ class _SpatialObjectWidgetState extends State<SpatialObjectWidget> {
             await three.GLTFLoader(flipY: false).fromBytes(globeBytes);
         if (!mounted) return;
         if (globeGltf != null) {
-          final globeNorm = _normalise(globeGltf.scene, 11.0);
-          // Apply the same base rotation the website uses on the raw model:
-          //   c.rotation.set(-.3, .17, .78)  — from globe.min.js
+          // Increased from 11.0 → 14.0 so the globe fills more of the screen,
+          // matching the large cropped appearance on the reference website.
+          final globeNorm = _normalise(globeGltf.scene, 14.0);
+          // Base model rotation from globe.min.js: c.rotation.set(-.3, .17, .78)
           globeNorm.rotation.x = -0.3;
           globeNorm.rotation.y =  0.17;
           globeNorm.rotation.z =  0.78;
 
           tj.scene.remove(sphereGroup);
           final globeGroup = three.Group();
-          globeGroup.position.y = -5.5;
-          // Source setupGlobe: b.rotation.set(points[1].camera.x - 0.1,
-          //                                   points[1].camera.y - 0.1,
-          //                                   points[1].camera.z - 0.1)
+          // Pushed down from -5.5 → -7.0 to keep only the top hemisphere
+          // visible after the size increase.
+          globeGroup.position.y = -7.0;
+          // Initial rotation: matches source setupGlobe()
+          //   b.rotation.set(points[1].camera.x - 0.1, …)
           globeGroup.rotation.x = _kTourX[0] - 0.1;
           globeGroup.rotation.y = _kTourY[0] - 0.1;
           globeGroup.rotation.z = _kTourZ[0] - 0.1;
           globeGroup.add(globeNorm);
           tj.scene.add(globeGroup);
           _globeRoot = globeGroup;
+
+          // Initialise the authoritative quaternion from the group's Euler angles.
+          _globeQuat = three.Quaternion(0, 0, 0, 1)
+            ..setFromEuler(three.Euler(
+                _kTourX[0] - 0.1, _kTourY[0] - 0.1, _kTourZ[0] - 0.1));
+
           if (mounted) setState(() => _globeStatus = 'globe.glb ✓');
         } else {
           if (mounted) setState(() => _globeStatus = 'sphere (globe.glb null)');
@@ -239,7 +275,7 @@ class _SpatialObjectWidgetState extends State<SpatialObjectWidget> {
       tj.addAnimationEvent((double dt) {
         final ddt = dt.clamp(0.001, 0.05);
 
-        // Plane: smooth follow of telemetry
+        // ── Plane: smooth follow of telemetry ───────────────────────────────
         final p = _planeRoot;
         if (p != null) {
           p.rotation.order = three.RotationOrders.xyz;
@@ -248,59 +284,78 @@ class _SpatialObjectWidgetState extends State<SpatialObjectWidget> {
           p.rotation.z += (_targetYaw   - p.rotation.z) * planeSmooth;
         }
 
-        // Globe: tour state machine
+        // ── Globe: tour / drag state machine ────────────────────────────────
         final g = _globeRoot;
         if (g == null) return;
 
         if (_dragging) {
-          // Velocity is set from pan events; just apply it.
-          g.rotation.y += _velY * ddt;
-          g.rotation.x = (g.rotation.x + _velX * ddt).clamp(-1.1, 1.1);
+          // Both axes use world-space pre-multiplication so that the drag
+          // direction always matches the mouse regardless of the current
+          // globe orientation (the large Z rotation in the initial state
+          // made local-X point backwards, causing the inverted feel).
+          final yDelta = three.Quaternion(0, 0, 0, 1)
+            ..setFromAxisAngle(three.Vector3(0, 1, 0), _velY * ddt);
+          final xDelta = three.Quaternion(0, 0, 0, 1)
+            ..setFromAxisAngle(three.Vector3(1, 0, 0), _velX * ddt);
+          _globeQuat
+            ..premultiply(yDelta)   // world-Y spin
+            ..premultiply(xDelta)   // world-X tilt  ← was multiply (local), now premultiply (world)
+            ..normalize();
+          _applyGlobeQuat(g);
+
         } else if (_gMode == _GlobeMode.free) {
           // Coast with exponential friction (half-life ≈ 0.7 s)
           final decay = math.pow(0.5, ddt / 0.7) as double;
           _velY *= decay;
           _velX *= decay;
-          g.rotation.y += _velY * ddt;
-          g.rotation.x = (g.rotation.x + _velX * ddt).clamp(-1.1, 1.1);
+          final yDelta = three.Quaternion(0, 0, 0, 1)
+            ..setFromAxisAngle(three.Vector3(0, 1, 0), _velY * ddt);
+          final xDelta = three.Quaternion(0, 0, 0, 1)
+            ..setFromAxisAngle(three.Vector3(1, 0, 0), _velX * ddt);
+          _globeQuat
+            ..premultiply(yDelta)
+            ..premultiply(xDelta)   // world-X, same as drag
+            ..normalize();
+          _applyGlobeQuat(g);
+
         } else if (_gMode == _GlobeMode.pausing) {
-          // Slow auto-rotate while at stop — matches source: x-=0.001, y+=0.001
-          // per frame @ 60fps → ~0.06 rad/s each axis
-          g.rotation.x -= 0.06 * ddt;
-          g.rotation.y += 0.06 * ddt;
+          // Slow auto-rotate while at stop:
+          //   source: x -= 0.001, y += 0.001 per frame @ 60 fps → 0.06 rad/s
+          // Applied as world-axis quaternion deltas to match source behaviour.
+          final yDelta = three.Quaternion(0, 0, 0, 1)
+            ..setFromAxisAngle(three.Vector3(0, 1, 0),  0.06 * ddt);
+          final xDelta = three.Quaternion(0, 0, 0, 1)
+            ..setFromAxisAngle(three.Vector3(1, 0, 0), -0.06 * ddt);
+          _globeQuat
+            ..premultiply(xDelta)  // world-X first (matches Euler order)
+            ..premultiply(yDelta)  // world-Y second
+            ..normalize();
+          _applyGlobeQuat(g);
+
           _pauseT += ddt;
           if (_pauseT >= _kPauseDur) {
-            _stopIdx = (_stopIdx + 1) % _kTourY.length;
-            // Build quaternions for SLERP — matches website's rotateObject()
-            _fromQuat = three.Quaternion(0, 0, 0, 1)
-              ..setFromEuler(three.Euler(g.rotation.x, g.rotation.y, g.rotation.z));
-            _toQuat = three.Quaternion(0, 0, 0, 1)
-              ..setFromEuler(three.Euler(
-                  _kTourX[_stopIdx], _kTourY[_stopIdx], _kTourZ[_stopIdx]));
+            _stopIdx = (_stopIdx + 1) % _kTourX.length;
+            _fromQuat = _quatCopy(_globeQuat);
+            // _shortestArc guarantees SLERP takes the <180° path, preventing
+            // the "spin the wrong way around" effect on large z differences.
+            _toQuat = _tourTarget(_stopIdx, _fromQuat);
             _tourT = 0.0;
             _gMode = _GlobeMode.touring;
           }
+
         } else {
           // TOURING: quaternion SLERP with Quadratic InOut — matches source
           _tourT += ddt / _kLegDur;
           if (_tourT >= 1.0) {
-            _tourT = 1.0;
-            final e = three.Euler()..setFromQuaternion(_toQuat);
-            g.rotation.x = e.x;
-            g.rotation.y = e.y;
-            g.rotation.z = e.z;
+            _globeQuat = _quatCopy(_toQuat);
+            _applyGlobeQuat(g);
             _gMode  = _GlobeMode.pausing;
             _pauseT = 0.0;
           } else {
             final t = _easeInOut(_tourT);
-            // Instance .slerp(qb, t) — returns mutated copy of the receiver
-            final q = three.Quaternion(
-                _fromQuat.x, _fromQuat.y, _fromQuat.z, _fromQuat.w)
-              ..slerp(_toQuat, t);
-            final e = three.Euler()..setFromQuaternion(q);
-            g.rotation.x = e.x;
-            g.rotation.y = e.y;
-            g.rotation.z = e.z;
+            final q = _quatCopy(_fromQuat)..slerp(_toQuat, t);
+            _globeQuat = q;
+            _applyGlobeQuat(g);
           }
         }
       });
@@ -313,7 +368,7 @@ class _SpatialObjectWidgetState extends State<SpatialObjectWidget> {
   }
 
   // ── Viewer lifecycle ─────────────────────────────────────────────────────────
-  void _ensureViewer(Size size) {
+  void _ensureViewer(Size size, double dpr) {
     if (_sameSize(_viewerSize, size)) return;
     _viewerSize = size;
     _watchdog?.cancel();
@@ -330,6 +385,8 @@ class _SpatialObjectWidgetState extends State<SpatialObjectWidget> {
         antialias: true,
         clearColor: 0x0d1b2e,
         clearAlpha: 1.0,
+        // Render at full native resolution so the scene is crisp on HiDPI displays.
+        screenResolution: dpr,
       ),
       onSetupComplete: () {
         if (mounted) setState(() {});
@@ -351,9 +408,10 @@ class _SpatialObjectWidgetState extends State<SpatialObjectWidget> {
   // ── Drag handlers ────────────────────────────────────────────────────────────
   void _onPanStart(DragStartDetails d) {
     _dragging = true;
-    _gMode = _GlobeMode.free; // leave tour mode
+    _gMode = _GlobeMode.free;
     _resumeTimer?.cancel();
     _lastPanTime = DateTime.now();
+    // _globeQuat is already authoritative — no re-sync needed.
   }
 
   void _onPanUpdate(DragUpdateDetails d) {
@@ -372,7 +430,6 @@ class _SpatialObjectWidgetState extends State<SpatialObjectWidget> {
     if (!_dragging) return;
     _dragging = false;
     _lastPanTime = null;
-    // Hand off Flutter's fling velocity for realistic momentum
     final fling = details.velocity.pixelsPerSecond;
     _velY = (fling.dx * 0.012).clamp(-8.0, 8.0);
     _velX = (fling.dy * 0.009).clamp(-5.0, 5.0);
@@ -381,16 +438,10 @@ class _SpatialObjectWidgetState extends State<SpatialObjectWidget> {
     _resumeTimer?.cancel();
     _resumeTimer = Timer(const Duration(seconds: 3), () {
       if (!mounted) return;
-      final g = _globeRoot;
-      if (g == null) return;
-      // Build from-quaternion from current globe rotation
-      _fromQuat = three.Quaternion(0, 0, 0, 1)
-        ..setFromEuler(three.Euler(g.rotation.x, g.rotation.y, g.rotation.z));
-      _toQuat = three.Quaternion(0, 0, 0, 1)
-        ..setFromEuler(three.Euler(
-            _kTourX[_stopIdx], _kTourY[_stopIdx], _kTourZ[_stopIdx]));
-      _tourT  = 0.0;
-      _gMode  = _GlobeMode.touring;
+      _fromQuat = _quatCopy(_globeQuat);
+      _toQuat   = _tourTarget(_stopIdx, _fromQuat);
+      _tourT    = 0.0;
+      _gMode    = _GlobeMode.touring;
     });
   }
 
@@ -427,18 +478,16 @@ class _SpatialObjectWidgetState extends State<SpatialObjectWidget> {
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
-      builder: (_, con) {
+      builder: (ctx, con) {
         final size = Size(con.maxWidth, con.maxHeight);
         if (size.width >= _minPx && size.height >= _minPx) {
-          _ensureViewer(size);
+          _ensureViewer(size, MediaQuery.of(ctx).devicePixelRatio);
         }
         final js = _js;
 
         return Stack(
           fit: StackFit.expand,
           children: [
-            // 3D scene (three_js has its own internal GestureDetector which
-            // would consume events — our capture layer below sits on top)
             if (js != null) Positioned.fill(child: js.build()),
             if (js == null)
               const Center(child: CircularProgressIndicator()),
@@ -465,28 +514,28 @@ class _SpatialObjectWidgetState extends State<SpatialObjectWidget> {
                     color: Colors.white38, fontSize: 11),
               ),
             ),
-              // ── DEBUG: drag to desired stop, note Y° value, report to dev ──
-              Positioned(
-                right: 10, top: 8,
-                child: Text(
-                  'Y:${_debugY.toStringAsFixed(1)}°  X:${_debugX.toStringAsFixed(1)}°',
-                  style: const TextStyle(
-                    color: Colors.yellowAccent,
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                  ),
+            // Debug overlay — shows live rotation for tuning
+            Positioned(
+              right: 10, top: 8,
+              child: Text(
+                'Y:${_debugY.toStringAsFixed(1)}°  X:${_debugX.toStringAsFixed(1)}°',
+                style: const TextStyle(
+                  color: Colors.yellowAccent,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
-              Positioned(
-                right: 10, bottom: 8,
-                child: Text(
-                  'click and drag to interact',
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.30),
-                    fontSize: 10,
-                  ),
+            ),
+            Positioned(
+              right: 10, bottom: 8,
+              child: Text(
+                'click and drag to interact',
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.30),
+                  fontSize: 10,
                 ),
               ),
+            ),
             // Transparent gesture capture layer — must be last (on top) so
             // it intercepts events before three_js's internal handler does.
             Positioned.fill(
