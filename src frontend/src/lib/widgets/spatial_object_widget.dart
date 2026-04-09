@@ -70,7 +70,8 @@ class _SpatialObjectWidgetState extends State<SpatialObjectWidget> {
   Timer? _resumeTimer;
   DateTime? _lastPanTime;
   Timer? _debugTimer;
-  double _debugY = 0, _debugX = 0;
+  double _planeCurX = 0, _planeCurY = 0, _planeCurZ = 0;
+  double _planeTgtX = 0, _planeTgtY = 0, _planeTgtZ = 0;
 
   // ── Math helpers ────────────────────────────────────────────────────────────
   /// Quadratic InOut — matches the website's Q.Easing.Quadratic.InOut
@@ -185,7 +186,6 @@ class _SpatialObjectWidgetState extends State<SpatialObjectWidget> {
     tj.camera.lookAt(three.Vector3(0, -1.0, 0));
 
     tj.scene = three.Scene();
-    tj.scene.background = three.Color.fromHex32(0x0d1b2e);
     tj.scene.add(three.HemisphereLight(0xb8c6ff, 0x1a2233, 0.8));
     tj.scene.add(three.AmbientLight(0xffffff, 0.6));
     tj.scene.add(
@@ -384,7 +384,8 @@ class _SpatialObjectWidgetState extends State<SpatialObjectWidget> {
       settings: three.Settings(
         antialias: true,
         clearColor: 0x0d1b2e,
-        clearAlpha: 1.0,
+        clearAlpha: 0.0,
+        alpha: true,
         // Render at full native resolution so the scene is crisp on HiDPI displays.
         screenResolution: dpr,
       ),
@@ -453,13 +454,17 @@ class _SpatialObjectWidgetState extends State<SpatialObjectWidget> {
     final cached = vm.latestData;
     if (cached != null) _applyTelemetry(cached);
     _sub = vm.dataStream.listen(_applyTelemetry);
-    // Refresh debug angle display ~10 times/s
+    // Refresh plane angle display ~10 times/s
     _debugTimer = Timer.periodic(const Duration(milliseconds: 100), (_) {
-      final g = _globeRoot;
-      if (g == null || !mounted) return;
+      final p = _planeRoot;
+      if (p == null || !mounted) return;
       setState(() {
-        _debugY = g.rotation.y * 180 / math.pi;
-        _debugX = g.rotation.x * 180 / math.pi;
+        _planeCurX = p.rotation.x * 180 / math.pi;
+        _planeCurY = p.rotation.y * 180 / math.pi;
+        _planeCurZ = p.rotation.z * 180 / math.pi;
+        _planeTgtX = _targetRoll * 180 / math.pi;
+        _planeTgtY = _targetPitch * 180 / math.pi;
+        _planeTgtZ = _targetYaw * 180 / math.pi;
       });
     });
   }
@@ -488,6 +493,12 @@ class _SpatialObjectWidgetState extends State<SpatialObjectWidget> {
         return Stack(
           fit: StackFit.expand,
           children: [
+            const Positioned.fill(
+              child: Image(
+                image: AssetImage('assets/images/BackGround.png'),
+                fit: BoxFit.cover,
+              ),
+            ),
             if (js != null) Positioned.fill(child: js.build()),
             if (js == null)
               const Center(child: CircularProgressIndicator()),
@@ -506,19 +517,13 @@ class _SpatialObjectWidgetState extends State<SpatialObjectWidget> {
                   ),
                 ),
               ),
-            Positioned(
-              left: 10, bottom: 8,
-              child: Text(
-                _globeStatus ?? '…',
-                style: const TextStyle(
-                    color: Colors.white38, fontSize: 11),
-              ),
-            ),
-            // Debug overlay — shows live rotation for tuning
+            // Debug overlay — shows live/current + target plane rotation
             Positioned(
               right: 10, top: 8,
               child: Text(
-                'Y:${_debugY.toStringAsFixed(1)}°  X:${_debugX.toStringAsFixed(1)}°',
+                'Plane X: ${_planeCurX.toStringAsFixed(1)}° / ${_planeTgtX.toStringAsFixed(1)}°\n'
+                'Plane Y: ${_planeCurY.toStringAsFixed(1)}° / ${_planeTgtY.toStringAsFixed(1)}°\n'
+                'Plane Z: ${_planeCurZ.toStringAsFixed(1)}° / ${_planeTgtZ.toStringAsFixed(1)}°',
                 style: const TextStyle(
                   color: Colors.yellowAccent,
                   fontSize: 12,
