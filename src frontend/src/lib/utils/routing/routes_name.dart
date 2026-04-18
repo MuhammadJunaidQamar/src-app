@@ -1,4 +1,5 @@
 class RouteName {
+  static const String connectionModeScreen = 'connection_mode_screen';
   static const String homeScreen = 'home_screen';
   static const String dashboardScreen = 'dashboard_screen';
   static const String orientationScreen = 'orientation_screen';

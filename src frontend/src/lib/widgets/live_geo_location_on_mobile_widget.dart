@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart' as mb;
 import 'package:src/model/model.dart';
+import 'package:src/utils/constants/constants.dart';
+import 'package:src/utils/mapbox_init.dart';
 import 'package:src/view_model/view_model.dart';
 
 class LiveGeoLocationOnMobileWidget extends StatefulWidget {
@@ -123,6 +125,44 @@ class LiveGeoLocationOnMobileWidgetState
 
   @override
   Widget build(BuildContext context) {
+    if (!mapboxSdkConfigured) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.map_outlined, size: 48, color: AppColors.mainTextColor2),
+              const SizedBox(height: 16),
+              Text(
+                'Map preview needs a Mapbox access token.',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      color: AppColors.mainTextColor1,
+                    ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Run once with your token (from Mapbox account):',
+                style: TextStyle(color: AppColors.mainTextColor2, fontSize: 14),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              SelectableText(
+                'flutter run --dart-define=ACCESS_TOKEN=pk....',
+                style: TextStyle(
+                  color: AppColors.spanishSkyBlueColor,
+                  fontSize: 13,
+                  fontFamily: 'monospace',
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     mb.MapOptions mapOptions = mb.MapOptions(
       pixelRatio: 1.0,
     );

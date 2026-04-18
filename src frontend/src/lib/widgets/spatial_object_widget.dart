@@ -494,9 +494,14 @@ class _SpatialObjectWidgetState extends State<SpatialObjectWidget> {
           fit: StackFit.expand,
           children: [
             const Positioned.fill(
-              child: Image(
-                image: AssetImage('assets/images/BackGround.png'),
-                fit: BoxFit.cover,
+              child: Align(
+                alignment: Alignment.topCenter,
+                child: Image(
+                  image: AssetImage('assets/images/BackGround.png'),
+                  fit: BoxFit.fitWidth,
+                  alignment: Alignment.topCenter,
+                  filterQuality: FilterQuality.high,
+                ),
               ),
             ),
             if (js != null) Positioned.fill(child: js.build()),

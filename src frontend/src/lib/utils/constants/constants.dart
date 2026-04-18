@@ -1,6 +1,6 @@
-import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:src/utils/connection/connection_config.dart';
 import 'package:src/utils/routing/routes_name.dart';
 
 const defaultPadding = 20.0;
@@ -13,16 +13,26 @@ const pages = [
 ];
 
 class Constants {
-  static final String wsUrl = kIsWeb
-      ? 'ws://localhost:8765/telemetry'
-      : (Platform.isAndroid
-          ? 'ws://10.0.2.2:8765/telemetry'
-          : 'ws://localhost:8765/telemetry');
+  static String get wsUrl {
+    if (!ConnectionConfig.hasSelection) {
+      return '';
+    }
+    return ConnectionConfig.selectedEndpoints.telemetryWsUrl;
+  }
+
+  static String get cameraStreamUrl {
+    if (!ConnectionConfig.hasSelection) {
+      return '';
+    }
+    return ConnectionConfig.selectedEndpoints.cameraStreamUrl;
+  }
 
   // Deprecated - keeping for backward compatibility
   static final String baseUrl = kIsWeb
       ? 'http://localhost:5000'
-      : (Platform.isAndroid ? 'http://10.0.2.2:5000' : 'http://localhost:5000');
+      : (defaultTargetPlatform == TargetPlatform.android
+          ? 'http://10.0.2.2:5000'
+          : 'http://localhost:5000');
   static const String getDataUrl = '/api/SensorData/GetLatestData';
   static const String postDataUrl = '';
   static const String deleteDataUrl = '';

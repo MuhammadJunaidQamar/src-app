@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mjpeg_stream/mjpeg_stream.dart';
+import 'package:src/utils/constants/constants.dart';
 
 class LiveCameraFeedWidget extends StatelessWidget {
   const LiveCameraFeedWidget({super.key});
@@ -12,7 +13,7 @@ class LiveCameraFeedWidget extends StatelessWidget {
       child: MJPEGStreamScreen(
         width: w,
         height: w * 9 / 16,
-        streamUrl: 'http://10.8.172.190:81/stream',
+        streamUrl: Constants.cameraStreamUrl,
         showLiveIcon: true,
         watermarkText: 'UCP',
       ),

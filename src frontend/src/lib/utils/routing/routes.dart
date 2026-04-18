@@ -6,12 +6,15 @@ import 'package:src/views/screens/geo_location_screen.dart';
 import 'package:src/views/screens/line_chart_display_screen.dart';
 import 'package:src/views/screens/orientation_screen.dart';
 import 'package:src/views/screens/home_screen.dart';
+import 'package:src/views/screens/connection_mode_screen.dart';
 import 'package:src/views/screens/project_info_screen.dart';
 import 'package:src/views/welcome/title_bar.dart';
 
 class Routes {
   static Widget getPage(String routeName, {Object? arguments}) {
     switch (routeName) {
+      case RouteName.connectionModeScreen:
+        return const ConnectionModeScreen();
       case RouteName.homeScreen:
         return const HomeScreen();
       case RouteName.dashboardScreen:

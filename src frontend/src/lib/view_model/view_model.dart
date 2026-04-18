@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:src/utils/connection/connection_config.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:src/model/model.dart';
 import 'package:src/utils/constants/constants.dart';
@@ -11,33 +12,64 @@ class ViewModel {
   StreamController<Model>? _dataController;
   Model? _latestData;
   bool _isConnected = false;
+  bool _isConnecting = false;
+  String? _activeWsUrl;
   Timer? _reconnectTimer;
 
   // Singleton pattern
   factory ViewModel() {
     _instance ??= ViewModel._internal();
+    _instance!._ensureDataController();
     return _instance!;
   }
 
   ViewModel._internal() {
-    _dataController = StreamController<Model>.broadcast();
+    _ensureDataController();
+    if (ConnectionConfig.hasSelection) {
+      connectWithSelectedMode();
+    }
+  }
+
+  void _ensureDataController() {
+    if (_dataController == null || _dataController!.isClosed) {
+      _dataController = StreamController<Model>.broadcast();
+    }
+  }
+
+  // Connect using currently selected mode.
+  void connectWithSelectedMode() {
+    if (!ConnectionConfig.hasSelection) {
+      if (kDebugMode) {
+        print('Connection mode is not selected yet.');
+      }
+      return;
+    }
+    connectWithUrl(Constants.wsUrl);
+  }
+
+  // Connect using an explicit WebSocket URL.
+  void connectWithUrl(String wsUrl) {
+    if (wsUrl.isEmpty) return;
+    _activeWsUrl = wsUrl;
     _connect();
   }
 
-  // Connect to WebSocket
+  // Connect to WebSocket.
   void _connect() {
-    if (_isConnected) return;
+    if (_isConnected || _isConnecting || _activeWsUrl == null) return;
 
     try {
+      _isConnecting = true;
       if (kDebugMode) {
-        print('Connecting to WebSocket: ${Constants.wsUrl}');
+        print('Connecting to WebSocket: $_activeWsUrl');
       }
 
       _channel = WebSocketChannel.connect(
-        Uri.parse(Constants.wsUrl),
+        Uri.parse(_activeWsUrl!),
       );
 
       _isConnected = true;
+      _isConnecting = false;
 
       // Listen to incoming messages
       _channel!.stream.listen(
@@ -76,6 +108,7 @@ class ViewModel {
       // Cancel any existing reconnect timer
       _reconnectTimer?.cancel();
     } catch (e) {
+      _isConnecting = false;
       if (kDebugMode) {
         print('Failed to connect to WebSocket: $e');
       }
@@ -86,6 +119,7 @@ class ViewModel {
   // Handle disconnection and attempt reconnect
   void _handleDisconnect() {
     _isConnected = false;
+    _isConnecting = false;
     _channel = null;
 
     // Attempt to reconnect after 3 seconds
@@ -139,12 +173,16 @@ class ViewModel {
     _channel?.sink.close();
     _dataController?.close();
     _isConnected = false;
+    _isConnecting = false;
+    _activeWsUrl = null;
   }
 
   // Force reconnect
   void reconnect() {
-    dispose();
-    _dataController = StreamController<Model>.broadcast();
+    _reconnectTimer?.cancel();
+    _channel?.sink.close();
+    _isConnected = false;
+    _isConnecting = false;
     _connect();
   }
 }

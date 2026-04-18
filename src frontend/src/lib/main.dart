@@ -2,13 +2,13 @@ import 'package:bitsdojo_window/bitsdojo_window.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
-import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart' as mb;
 import 'package:src/theme/dark_theme.dart';
 import 'package:src/theme/light_theme.dart';
 import 'package:src/theme/theme_manager.dart';
 import 'package:src/utils/constants/constants.dart';
 import 'package:src/utils/routing/routes.dart';
 import 'package:src/utils/routing/routes_name.dart';
+import 'package:src/utils/mapbox_init.dart';
 
 final localhostServer = InAppLocalhostServer(documentRoot: 'assets');
 WebViewEnvironment? webViewEnvironment;
@@ -34,7 +34,7 @@ Future<void> initializePlatformSpecificSettings() async {
     await setupWebViewEnvironment();
   } else if (!kIsWeb) {
     if (isMobile) {
-      setupMapboxSDK();
+      initMapboxSdk();
     }
   }
 }
@@ -53,15 +53,6 @@ Future<void> setupWebViewEnvironment() async {
   } catch (e) {
     debugPrint('Error setting up WebView: $e');
   }
-}
-
-void setupMapboxSDK() {
-  const String ACCESS_TOKEN =
-      String.fromEnvironment("ACCESS_TOKEN", defaultValue: "");
-  if (ACCESS_TOKEN.isEmpty) {
-    throw Exception('Mapbox access token is not provided');
-  }
-  mb.MapboxOptions.setAccessToken(ACCESS_TOKEN);
 }
 
 void setupWindow() {
@@ -120,7 +111,7 @@ class _MyAppState extends State<MyApp> {
       theme: lightTheme(context),
       darkTheme: darkTheme(context),
       themeMode: ThemeMode.system,
-      initialRoute: isDesktop ? RouteName.titleBar : RouteName.homeScreen,
+      initialRoute: RouteName.connectionModeScreen,
       onGenerateRoute: Routes.generateRoute,
     );
   }

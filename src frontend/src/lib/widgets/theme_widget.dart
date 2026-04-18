@@ -16,7 +16,7 @@ class _ThemeWidgetState extends State<ThemeWidget> {
       fontSize: 16,
       color: AppColors.textColor,
       fontWeight: FontWeight.normal,
-      letterSpacing: 0.01,
+      letterSpacing: 0.0,
     );
 
     return Padding(
