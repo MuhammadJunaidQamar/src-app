@@ -113,9 +113,6 @@ class _LineChartWidgetState extends State<LineChartWidget> {
       case 20:
         text = '08:00';
         break;
-      case 20:
-        text = '12:00';
-        break;
       case 40:
         text = '16:00';
         break;

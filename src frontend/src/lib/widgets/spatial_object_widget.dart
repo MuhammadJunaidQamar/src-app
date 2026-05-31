@@ -13,7 +13,9 @@ enum _GlobeMode { pausing, touring, free }
 /// Single [ThreeJS] view: [plane.glb] (telemetry) + [globe.glb] (guided tour /
 /// drag) in one scene.
 class SpatialObjectWidget extends StatefulWidget {
-  const SpatialObjectWidget({super.key});
+  final bool showPlane;
+
+  const SpatialObjectWidget({super.key, this.showPlane = true});
 
   @override
   State<SpatialObjectWidget> createState() => _SpatialObjectWidgetState();
@@ -33,11 +35,23 @@ class _SpatialObjectWidgetState extends State<SpatialObjectWidget> {
   //   [2] "Scale your business"   camera {x:-1.1633, y:-1.0955, z:0.0837}
   // Tour cycles indices 0 → 1 → 2 → 0 ...
   // Source auto-rotate while pausing: x-=0.001/frame, y+=0.001/frame @ 60fps
-  static const List<double> _kTourX = [ 0.6527269923798689,  0.13631450928350594, -1.1633540169219667];
-  static const List<double> _kTourY = [-0.5919802501399659, -0.4650123639393026,  -1.095540980468304];
-  static const List<double> _kTourZ = [-2.837507483903454,  -0.458015913995041,    0.08377304089994568];
+  static const List<double> _kTourX = [
+    0.6527269923798689,
+    0.13631450928350594,
+    -1.1633540169219667
+  ];
+  static const List<double> _kTourY = [
+    -0.5919802501399659,
+    -0.4650123639393026,
+    -1.095540980468304
+  ];
+  static const List<double> _kTourZ = [
+    -2.837507483903454,
+    -0.458015913995041,
+    0.08377304089994568
+  ];
   // Source: rotationTime = 1000 ms, easing = Quadratic.InOut
-  static const double _kLegDur   = 1.0; // 1 second — matches rotationTime
+  static const double _kLegDur = 1.0; // 1 second — matches rotationTime
   static const double _kPauseDur = 3.0; // pause at each stop
 
   three.ThreeJS? _js;
@@ -45,6 +59,7 @@ class _SpatialObjectWidgetState extends State<SpatialObjectWidget> {
   three.Object3D? _globeRoot;
   Size? _viewerSize;
   bool _sceneReady = false;
+  // ignore: unused_field
   String? _globeStatus;
 
   double _targetRoll = 0, _targetPitch = 0, _targetYaw = 0;
@@ -54,19 +69,19 @@ class _SpatialObjectWidgetState extends State<SpatialObjectWidget> {
 
   // ── Globe animation state ───────────────────────────────────────────────────
   _GlobeMode _gMode = _GlobeMode.pausing;
-  int    _stopIdx = 0;
-  double _tourT   = 0.0;  // 0..1 progress during TOURING
-  double _pauseT  = 0.0;  // elapsed s during PAUSING
+  int _stopIdx = 0;
+  double _tourT = 0.0; // 0..1 progress during TOURING
+  double _pauseT = 0.0; // elapsed s during PAUSING
 
   // _globeQuat is the AUTHORITATIVE orientation — always kept in sync.
   // Tour, drag, coast, and auto-rotate all read/write this single quaternion.
   three.Quaternion _globeQuat = three.Quaternion(0, 0, 0, 1);
   // SLERP endpoints for tour transitions
-  three.Quaternion _fromQuat  = three.Quaternion(0, 0, 0, 1);
-  three.Quaternion _toQuat    = three.Quaternion(0, 0, 0, 1);
+  three.Quaternion _fromQuat = three.Quaternion(0, 0, 0, 1);
+  three.Quaternion _toQuat = three.Quaternion(0, 0, 0, 1);
 
-  double _velY    = 0.0, _velX = 0.0;
-  bool   _dragging = false;
+  double _velY = 0.0, _velX = 0.0;
+  bool _dragging = false;
   Timer? _resumeTimer;
   DateTime? _lastPanTime;
   Timer? _debugTimer;
@@ -103,9 +118,9 @@ class _SpatialObjectWidgetState extends State<SpatialObjectWidget> {
     final denom = math.sqrt(a.y * a.y + a.z * a.z);
     if (denom < 1e-4) return (roll: 0.0, pitch: 0.0, ok: false);
     return (
-      roll:  math.atan2(a.y, a.z),
+      roll: math.atan2(a.y, a.z),
       pitch: math.atan2(-a.x, denom),
-      ok:    true,
+      ok: true,
     );
   }
 
@@ -121,7 +136,7 @@ class _SpatialObjectWidgetState extends State<SpatialObjectWidget> {
     final accel = model.acceleration;
     if (accel == null) return;
     final tilt = _tiltFromAccel(accel);
-    _targetRoll  = tilt.roll;
+    _targetRoll = tilt.roll;
     _targetPitch = tilt.pitch;
     final mag = model.distance;
     if (mag != null && tilt.ok) {
@@ -196,20 +211,22 @@ class _SpatialObjectWidgetState extends State<SpatialObjectWidget> {
     );
 
     try {
-      // ── Plane ───────────────────────────────────────────────────────────────
-      final planeBytes =
-          (await rootBundle.load(_planeAsset)).buffer.asUint8List();
-      final planeGltf =
-          await three.GLTFLoader(flipY: true).fromBytes(planeBytes);
-      if (!mounted) return;
-      if (planeGltf == null) {
-        setState(() => _error = 'Plane GLB parse failed.');
-        return;
+      if (widget.showPlane) {
+        // ── Plane ───────────────────────────────────────────────────────────────
+        final planeBytes =
+            (await rootBundle.load(_planeAsset)).buffer.asUint8List();
+        final planeGltf =
+            await three.GLTFLoader(flipY: true).fromBytes(planeBytes);
+        if (!mounted) return;
+        if (planeGltf == null) {
+          setState(() => _error = 'Plane GLB parse failed.');
+          return;
+        }
+        final planeNorm = _normalise(planeGltf.scene, 1.6);
+        planeNorm.position.y = 3.8;
+        tj.scene.add(planeNorm);
+        _planeRoot = planeNorm;
       }
-      final planeNorm = _normalise(planeGltf.scene, 1.6);
-      planeNorm.position.y = 3.8;
-      tj.scene.add(planeNorm);
-      _planeRoot = planeNorm;
 
       // ── Globe placeholder (shown while globe.glb loads) ──────────────────
       final sphereGroup = three.Group();
@@ -236,8 +253,8 @@ class _SpatialObjectWidgetState extends State<SpatialObjectWidget> {
           final globeNorm = _normalise(globeGltf.scene, 14.0);
           // Base model rotation from globe.min.js: c.rotation.set(-.3, .17, .78)
           globeNorm.rotation.x = -0.3;
-          globeNorm.rotation.y =  0.17;
-          globeNorm.rotation.z =  0.78;
+          globeNorm.rotation.y = 0.17;
+          globeNorm.rotation.z = 0.78;
 
           tj.scene.remove(sphereGroup);
           final globeGroup = three.Group();
@@ -279,9 +296,9 @@ class _SpatialObjectWidgetState extends State<SpatialObjectWidget> {
         final p = _planeRoot;
         if (p != null) {
           p.rotation.order = three.RotationOrders.xyz;
-          p.rotation.x += (_targetRoll  - p.rotation.x) * planeSmooth;
+          p.rotation.x += (_targetRoll - p.rotation.x) * planeSmooth;
           p.rotation.y += (_targetPitch - p.rotation.y) * planeSmooth;
-          p.rotation.z += (_targetYaw   - p.rotation.z) * planeSmooth;
+          p.rotation.z += (_targetYaw - p.rotation.z) * planeSmooth;
         }
 
         // ── Globe: tour / drag state machine ────────────────────────────────
@@ -298,11 +315,11 @@ class _SpatialObjectWidgetState extends State<SpatialObjectWidget> {
           final xDelta = three.Quaternion(0, 0, 0, 1)
             ..setFromAxisAngle(three.Vector3(1, 0, 0), _velX * ddt);
           _globeQuat
-            ..premultiply(yDelta)   // world-Y spin
-            ..premultiply(xDelta)   // world-X tilt  ← was multiply (local), now premultiply (world)
+            ..premultiply(yDelta) // world-Y spin
+            ..premultiply(
+                xDelta) // world-X tilt  ← was multiply (local), now premultiply (world)
             ..normalize();
           _applyGlobeQuat(g);
-
         } else if (_gMode == _GlobeMode.free) {
           // Coast with exponential friction (half-life ≈ 0.7 s)
           final decay = math.pow(0.5, ddt / 0.7) as double;
@@ -314,21 +331,20 @@ class _SpatialObjectWidgetState extends State<SpatialObjectWidget> {
             ..setFromAxisAngle(three.Vector3(1, 0, 0), _velX * ddt);
           _globeQuat
             ..premultiply(yDelta)
-            ..premultiply(xDelta)   // world-X, same as drag
+            ..premultiply(xDelta) // world-X, same as drag
             ..normalize();
           _applyGlobeQuat(g);
-
         } else if (_gMode == _GlobeMode.pausing) {
           // Slow auto-rotate while at stop:
           //   source: x -= 0.001, y += 0.001 per frame @ 60 fps → 0.06 rad/s
           // Applied as world-axis quaternion deltas to match source behaviour.
           final yDelta = three.Quaternion(0, 0, 0, 1)
-            ..setFromAxisAngle(three.Vector3(0, 1, 0),  0.06 * ddt);
+            ..setFromAxisAngle(three.Vector3(0, 1, 0), 0.06 * ddt);
           final xDelta = three.Quaternion(0, 0, 0, 1)
             ..setFromAxisAngle(three.Vector3(1, 0, 0), -0.06 * ddt);
           _globeQuat
-            ..premultiply(xDelta)  // world-X first (matches Euler order)
-            ..premultiply(yDelta)  // world-Y second
+            ..premultiply(xDelta) // world-X first (matches Euler order)
+            ..premultiply(yDelta) // world-Y second
             ..normalize();
           _applyGlobeQuat(g);
 
@@ -342,14 +358,13 @@ class _SpatialObjectWidgetState extends State<SpatialObjectWidget> {
             _tourT = 0.0;
             _gMode = _GlobeMode.touring;
           }
-
         } else {
           // TOURING: quaternion SLERP with Quadratic InOut — matches source
           _tourT += ddt / _kLegDur;
           if (_tourT >= 1.0) {
             _globeQuat = _quatCopy(_toQuat);
             _applyGlobeQuat(g);
-            _gMode  = _GlobeMode.pausing;
+            _gMode = _GlobeMode.pausing;
             _pauseT = 0.0;
           } else {
             final t = _easeInOut(_tourT);
@@ -440,9 +455,9 @@ class _SpatialObjectWidgetState extends State<SpatialObjectWidget> {
     _resumeTimer = Timer(const Duration(seconds: 3), () {
       if (!mounted) return;
       _fromQuat = _quatCopy(_globeQuat);
-      _toQuat   = _tourTarget(_stopIdx, _fromQuat);
-      _tourT    = 0.0;
-      _gMode    = _GlobeMode.touring;
+      _toQuat = _tourTarget(_stopIdx, _fromQuat);
+      _tourT = 0.0;
+      _gMode = _GlobeMode.touring;
     });
   }
 
@@ -493,67 +508,69 @@ class _SpatialObjectWidgetState extends State<SpatialObjectWidget> {
         return Stack(
           fit: StackFit.expand,
           children: [
-            const Positioned.fill(
-              child: Align(
-                alignment: Alignment.topCenter,
+            if (widget.showPlane)
+              const Positioned.fill(
                 child: Image(
                   image: AssetImage('assets/images/BackGround.png'),
-                  fit: BoxFit.fitWidth,
+                  fit: BoxFit.fill,
                   alignment: Alignment.topCenter,
                   filterQuality: FilterQuality.high,
                 ),
               ),
-            ),
             if (js != null) Positioned.fill(child: js.build()),
-            if (js == null)
-              const Center(child: CircularProgressIndicator()),
+            if (js == null) const Center(child: CircularProgressIndicator()),
             if (_error != null)
               Positioned(
-                top: 8, left: 8, right: 8,
+                top: 8,
+                left: 8,
+                right: 8,
                 child: Material(
                   color: Colors.red.shade900,
                   child: Padding(
                     padding: const EdgeInsets.all(8),
                     child: Text(
                       _error!,
-                      style: const TextStyle(
-                          color: Colors.white, fontSize: 12),
+                      style: const TextStyle(color: Colors.white, fontSize: 12),
                     ),
                   ),
                 ),
               ),
-            // Debug overlay — shows live/current + target plane rotation
-            Positioned(
-              right: 10, top: 8,
-              child: Text(
-                'Plane X: ${_planeCurX.toStringAsFixed(1)}° / ${_planeTgtX.toStringAsFixed(1)}°\n'
-                'Plane Y: ${_planeCurY.toStringAsFixed(1)}° / ${_planeTgtY.toStringAsFixed(1)}°\n'
-                'Plane Z: ${_planeCurZ.toStringAsFixed(1)}° / ${_planeTgtZ.toStringAsFixed(1)}°',
-                style: const TextStyle(
-                  color: Colors.yellowAccent,
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
+            if (widget.showPlane)
+              // Debug overlay — shows live/current + target plane rotation
+              Positioned(
+                right: 10,
+                top: 8,
+                child: Text(
+                  'Plane X: ${_planeCurX.toStringAsFixed(1)}° / ${_planeTgtX.toStringAsFixed(1)}°\n'
+                  'Plane Y: ${_planeCurY.toStringAsFixed(1)}° / ${_planeTgtY.toStringAsFixed(1)}°\n'
+                  'Plane Z: ${_planeCurZ.toStringAsFixed(1)}° / ${_planeTgtZ.toStringAsFixed(1)}°',
+                  style: const TextStyle(
+                    color: Colors.yellowAccent,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
-            ),
-            Positioned(
-              right: 10, bottom: 8,
-              child: Text(
-                'click and drag to interact',
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.30),
-                  fontSize: 10,
+            if (widget.showPlane)
+              Positioned(
+                right: 10,
+                bottom: 8,
+                child: Text(
+                  'click and drag to interact',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.30),
+                    fontSize: 10,
+                  ),
                 ),
               ),
-            ),
             // Transparent gesture capture layer — must be last (on top) so
             // it intercepts events before three_js's internal handler does.
             Positioned.fill(
               child: GestureDetector(
                 behavior: HitTestBehavior.translucent,
-                onPanStart:  _onPanStart,
+                onPanStart: _onPanStart,
                 onPanUpdate: _onPanUpdate,
-                onPanEnd:    _onPanEnd,
+                onPanEnd: _onPanEnd,
                 onPanCancel: () => _onPanEnd(DragEndDetails()),
               ),
             ),

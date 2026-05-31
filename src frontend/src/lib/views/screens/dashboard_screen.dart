@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:src/utils/responsive.dart';
 import 'package:src/widgets/custom_card_widget.dart';
+import 'package:src/widgets/geo_location_only_widget.dart';
+import 'package:src/widgets/glob_only_widget.dart';
 import 'package:src/widgets/header_widget.dart';
 import 'package:src/widgets/info_widget.dart';
 import 'package:src/widgets/live_camera_feed_widget.dart';
@@ -23,17 +25,58 @@ class DashboardScreen extends StatelessWidget {
                 const HeaderWidget(),
                 Expanded(
                   child: !isTablet
-                      ? CustomCard(
-                          child: LiveCameraFeedWidget(),
+                      ? Stack(
+                          clipBehavior: Clip.none,
+                          children: [
+                            CustomCard(
+                              child: LiveCameraFeedWidget(),
+                            ),
+                            Positioned(
+                              top: 20,
+                              right: 50,
+                              width: isDesktop ? 280 : 170,
+                              height: isDesktop ? 220 : 130,
+                              child: const GlobOnlyWidget(),
+                            ),
+
+                            // map widget
+                            Positioned(
+                              top: 12,
+                              left: 50,
+                              width: isDesktop ? 280 : 150,
+                              height: isDesktop ? 220 : 130,
+                              child: GeoLocationOnlyWidget(),
+                            )
+                          ],
                         )
-                      : const SingleChildScrollView(
+                      : SingleChildScrollView(
                           scrollDirection: Axis.vertical,
                           child: Column(
                             children: [
                               AspectRatio(
                                 aspectRatio: 16 / 9,
-                                child: CustomCard(
-                                  child: LiveCameraFeedWidget(),
+                                child: Stack(
+                                  clipBehavior: Clip.none,
+                                  children: [
+                                    CustomCard(
+                                      child: LiveCameraFeedWidget(),
+                                    ),
+                                    Positioned(
+                                      top: 20,
+                                      right: 50,
+                                      width: isDesktop ? 280 : 170,
+                                      height: isDesktop ? 220 : 130,
+                                      child: GlobOnlyWidget(),
+                                    ),
+                                    // map widget
+                                    Positioned(
+                                      top: 12,
+                                      left: 50,
+                                      width: isDesktop ? 280 : 150,
+                                      height: isDesktop ? 220 : 130,
+                                      child: GeoLocationOnlyWidget(),
+                                    )
+                                  ],
                                 ),
                               ),
                               InfoWidget(),
