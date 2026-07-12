@@ -14,6 +14,7 @@ class DashboardScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDesktop = Responsive.isDesktop(context);
     final isTablet = Responsive.isTablet(context);
+    final isMobile = Responsive.isMobile(context);
     return Padding(
       padding: const EdgeInsets.only(top: 10.0),
       child: Row(
@@ -31,22 +32,24 @@ class DashboardScreen extends StatelessWidget {
                             CustomCard(
                               child: LiveCameraFeedWidget(),
                             ),
-                            Positioned(
-                              top: 20,
-                              right: 50,
-                              width: isDesktop ? 280 : 170,
-                              height: isDesktop ? 220 : 130,
-                              child: const GlobOnlyWidget(),
-                            ),
+                            if (!isMobile)
+                              Positioned(
+                                top: 20,
+                                right: 50,
+                                width: 280,
+                                height: isDesktop ? 220 : 130,
+                                child: const GlobOnlyWidget(),
+                              ),
 
                             // map widget
-                            Positioned(
-                              top: 12,
-                              left: 50,
-                              width: isDesktop ? 280 : 150,
-                              height: isDesktop ? 220 : 130,
-                              child: GeoLocationOnlyWidget(),
-                            )
+                            if (!isMobile)
+                              Positioned(
+                                top: 12,
+                                left: 50,
+                                width: 280,
+                                height: 220,
+                                child: GeoLocationOnlyWidget(),
+                              )
                           ],
                         )
                       : SingleChildScrollView(
@@ -61,21 +64,23 @@ class DashboardScreen extends StatelessWidget {
                                     CustomCard(
                                       child: LiveCameraFeedWidget(),
                                     ),
-                                    Positioned(
-                                      top: 20,
-                                      right: 50,
-                                      width: isDesktop ? 280 : 170,
-                                      height: isDesktop ? 220 : 130,
-                                      child: GlobOnlyWidget(),
-                                    ),
+                                    if (!isMobile)
+                                      Positioned(
+                                        top: 20,
+                                        right: 50,
+                                        width: 280,
+                                        height: 220,
+                                        child: GlobOnlyWidget(),
+                                      ),
                                     // map widget
-                                    Positioned(
-                                      top: 12,
-                                      left: 50,
-                                      width: isDesktop ? 280 : 150,
-                                      height: isDesktop ? 220 : 130,
-                                      child: GeoLocationOnlyWidget(),
-                                    )
+                                    if (!isMobile)
+                                      Positioned(
+                                        top: 12,
+                                        left: 50,
+                                        width: 280,
+                                        height: 220,
+                                        child: GeoLocationOnlyWidget(),
+                                      )
                                   ],
                                 ),
                               ),

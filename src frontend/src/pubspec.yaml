@@ -44,7 +44,12 @@ dependencies:
   flutter_inappwebview: ^6.1.5
   mjpeg_stream: ^1.0.1
   three_js: ^0.2.7
-
+  flutter_blue_plus: ^2.3.2
+  permission_handler: ^11.3.1
+  shared_preferences: ^2.5.5
+  flutter_blue_plus_winrt: ^0.0.20
+  url_launcher: ^6.3.2
+  flutter_svg: ^2.3.0
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -69,7 +74,7 @@ flutter:
 
   # To add assets to your application, add an assets section, like this:
   assets:
-    - assets/icons/satellite.png
+    - assets/icons/
     - assets/webview/mapbox_map.html
     - assets/3d object/plane.glb
     - assets/3d object/globe.glb

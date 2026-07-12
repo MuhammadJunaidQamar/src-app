@@ -26,8 +26,7 @@ class WindowButtonsWidget extends StatelessWidget {
   }
 
   final buttonColors = WindowButtonColors(
-    // Color of the icon when the button is in its normal state (not hovered or pressed)
-    iconNormal: AppColors.zincColor,
+    iconNormal: AppColors.contentColorWhite,
     // Color of the button when the mouse is hovering over it
     mouseOver: AppColors.pantoneColor,
     // Color of the button when it is pressed down
@@ -44,7 +43,7 @@ class WindowButtonsWidget extends StatelessWidget {
     // Color of the close button when it is pressed down
     mouseDown: const Color(0xFFB71C1C),
     // Color of the icon in the close button when in its normal state
-    iconNormal: const Color(0xFF805306),
+    iconNormal: AppColors.contentColorWhite,
     // Color of the icon in the close button when the mouse is hovering over it
     iconMouseOver: Colors.white,
   );

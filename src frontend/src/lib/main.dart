@@ -1,6 +1,7 @@
 import 'package:bitsdojo_window/bitsdojo_window.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_blue_plus_winrt/flutter_blue_plus_winrt.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:src/theme/dark_theme.dart';
 import 'package:src/theme/light_theme.dart';
@@ -9,33 +10,37 @@ import 'package:src/utils/constants/constants.dart';
 import 'package:src/utils/routing/routes.dart';
 import 'package:src/utils/routing/routes_name.dart';
 import 'package:src/utils/mapbox_init.dart';
+import 'package:src/utils/webview_environment.dart';
+import 'package:src/widgets/desktop_window_shell.dart';
 
 final localhostServer = InAppLocalhostServer(documentRoot: 'assets');
-WebViewEnvironment? webViewEnvironment;
 ThemeManager themeManager = ThemeManager();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Start the localhost server for serving HTML assets
-  await localhostServer.start();
+  if (!kIsWeb && defaultTargetPlatform == TargetPlatform.windows) {
+    FlutterBluePlusWinrt.registerWith();
+  }
+
+  // InAppLocalhostServer uses dart:io ServerSocket — desktop only.
+  if (isNativeDesktop) {
+    await localhostServer.start();
+  }
 
   await initializePlatformSpecificSettings();
 
   runApp(const MyApp());
 
-  if (isDesktop) {
+  if (isNativeDesktop) {
     setupWindow();
   }
 }
 
 Future<void> initializePlatformSpecificSettings() async {
-  if (isDesktop) {
+  initMapboxSdk();
+  if (isNativeDesktop) {
     await setupWebViewEnvironment();
-  } else if (!kIsWeb) {
-    if (isMobile) {
-      initMapboxSdk();
-    }
   }
 }
 
@@ -72,6 +77,10 @@ bool get isDesktop => [
       TargetPlatform.macOS
     ].contains(defaultTargetPlatform);
 
+/// True on Windows/macOS/Linux builds — false on web even when the browser
+/// reports a desktop [defaultTargetPlatform].
+bool get isNativeDesktop => !kIsWeb && isDesktop;
+
 bool get isMobile => [TargetPlatform.iOS, TargetPlatform.android]
     .contains(defaultTargetPlatform);
 
@@ -92,7 +101,7 @@ class _MyAppState extends State<MyApp> {
   @override
   void dispose() {
     themeManager.removeListener(themeListener);
-    if (isDesktop) {
+    if (isNativeDesktop) {
       localhostServer.close();
     }
     super.dispose();
@@ -113,6 +122,10 @@ class _MyAppState extends State<MyApp> {
       themeMode: ThemeMode.system,
       initialRoute: RouteName.connectionModeScreen,
       onGenerateRoute: Routes.generateRoute,
+      builder: (context, child) {
+        if (child == null) return const SizedBox.shrink();
+        return DesktopWindowShell(child: child);
+      },
     );
   }
 }

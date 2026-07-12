@@ -26,6 +26,7 @@ class ChartData {
       unit: 'Pa',
       chartWidget: ChartWidget(
         type: 'Pressure',
+        title: 'Barometric pressure',
         lineColor: AppColors.contentColorCyan,
         unit: 'Pa',
       ),
@@ -46,6 +47,7 @@ class ChartData {
       unit: 'Pa',
       chartWidget: ChartWidget(
         type: 'SeaPressure',
+        title: 'Sea-level pressure (QNH)',
         lineColor: AppColors.contentColorBlue,
         unit: 'Pa',
       ),

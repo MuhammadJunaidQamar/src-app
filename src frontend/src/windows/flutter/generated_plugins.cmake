@@ -5,7 +5,10 @@
 list(APPEND FLUTTER_PLUGIN_LIST
   bitsdojo_window_windows
   flutter_angle
+  flutter_blue_plus_winrt
   flutter_inappwebview_windows
+  permission_handler_windows
+  url_launcher_windows
 )
 
 list(APPEND FLUTTER_FFI_PLUGIN_LIST

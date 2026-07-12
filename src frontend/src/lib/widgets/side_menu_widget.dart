@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:src/data/side_menu_data.dart';
+import 'package:src/utils/connection/connection_config.dart';
 import 'package:src/utils/constants/constants.dart';
+import 'package:src/utils/desktop_interaction.dart';
 import 'package:src/utils/global/global.dart';
+import 'package:src/utils/routing/routes.dart';
 import 'package:src/widgets/custom_card_widget.dart';
 import 'package:src/widgets/theme_widget.dart';
 
@@ -15,6 +18,41 @@ class SideMenuWidget extends StatefulWidget {
 }
 
 class _SideMenuWidgetState extends State<SideMenuWidget> {
+  Future<void> _confirmChangeConnection() async {
+    final currentMode = ConnectionConfig.selectedMode;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.blackPearlColor,
+        title: const Text(
+          'Change connection?',
+          style: TextStyle(color: AppColors.contentColorWhite),
+        ),
+        content: Text(
+          currentMode == null
+              ? 'You will return to connection setup. Live telemetry will stop.'
+              : 'Disconnect from ${ConnectionConfig.modeTitle(currentMode)} '
+                  'and choose a different connection method?',
+          style: const TextStyle(color: AppColors.mainTextColor2),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Change'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      await Routes.goToConnectionMode(context);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final data = SideMenuData();
@@ -39,6 +77,47 @@ class _SideMenuWidgetState extends State<SideMenuWidget> {
             child: Column(
               children: [
                 ThemeWidget(),
+                InkWell(
+                  mouseCursor: clickCursor,
+                  onTap: _confirmChangeConnection,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.swap_horiz,
+                          color: AppColors.mainTextColor2,
+                          size: 22,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Change connection',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: AppColors.textColor,
+                                ),
+                              ),
+                              if (ConnectionConfig.selectedMode != null)
+                                Text(
+                                  ConnectionConfig.modeTitle(
+                                    ConnectionConfig.selectedMode!,
+                                  ),
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    color: AppColors.mainTextColor3,
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
                 if (data.menu.length > displayItemsInBuildMenuEntry)
                   ListView.builder(
                     shrinkWrap: true,
@@ -65,6 +144,7 @@ class _SideMenuWidgetState extends State<SideMenuWidget> {
         color: isSelected ? data.menu[index].color : Colors.transparent,
       ),
       child: InkWell(
+        mouseCursor: clickCursor,
         onTap: () {
           setState(() {
             Global.pageIdx = index;
@@ -109,6 +189,7 @@ class _SideMenuWidgetState extends State<SideMenuWidget> {
         color: isSelected ? data.menu[index].color : Colors.transparent,
       ),
       child: InkWell(
+        mouseCursor: clickCursor,
         onTap: () {
           setState(() {
             Global.pageIdx = index;

@@ -112,6 +112,11 @@ class Model {
   Rotation? rotation;
   Distance? distance;
   GPS? gps;
+  // Pre-computed orientation from the IMU (radians). When present these are
+  // preferred over recomputing from raw accelerometer data.
+  double? roll;
+  double? pitch;
+  double? yaw;
 
   Model({
     this.temperature,
@@ -122,6 +127,9 @@ class Model {
     this.rotation,
     this.distance,
     this.gps,
+    this.roll,
+    this.pitch,
+    this.yaw,
   });
 
   Model.fromJson(Map<String, dynamic> json) {
@@ -145,16 +153,18 @@ class Model {
       pressure = _toDouble(json['Pressure']);
     }
 
+    // Sea Pressure - try 'seaPress' first, then 'SeaPressure'
+    if (json.containsKey('seaPress')) {
+      seaPressure = _toDouble(json['seaPress']);
+    } else if (json.containsKey('SeaPressure')) {
+      seaPressure = _toDouble(json['SeaPressure']);
+    }
+
     // Altitude - try 'alt' first, then 'Altitude'
     if (json.containsKey('alt')) {
       altitude = _toDouble(json['alt']);
     } else if (json.containsKey('Altitude')) {
       altitude = _toDouble(json['Altitude']);
-    }
-
-    // SeaPressure (only in old API format)
-    if (json.containsKey('SeaPressure')) {
-      seaPressure = _toDouble(json['SeaPressure']);
     }
 
     // Acceleration - check for flat format (ax, ay, az) or nested format
@@ -195,6 +205,11 @@ class Model {
     } else if (json.containsKey('Distance')) {
       distance = Distance.fromJson(json['Distance']);
     }
+
+    // Pre-computed orientation (radians) — sent by the ESP32 firmware
+    if (json.containsKey('roll'))  roll  = _toDouble(json['roll']);
+    if (json.containsKey('pitch')) pitch = _toDouble(json['pitch']);
+    if (json.containsKey('yaw'))   yaw   = _toDouble(json['yaw']);
 
     // GPS - check for flat format or nested format
     if (json.containsKey('lat') ||

@@ -8,27 +8,31 @@ import 'package:src/view_model/view_model.dart';
 
 class _LineChart extends StatelessWidget {
   final List<FlSpot> spots;
+  final List<int> spotTimes;
   final Color lineColor;
   final String type;
   final String unit;
   final bool isLoading;
+  final int numberOfValuesShown;
 
   const _LineChart({
     required this.spots,
+    required this.spotTimes,
     required this.type,
     required this.lineColor,
     required this.unit,
     required this.isLoading,
+    required this.numberOfValuesShown,
   });
-
-  final int numberOfValuesShown = 9;
 
   @override
   Widget build(BuildContext context) {
     return isLoading
         ? Center(child: CircularProgressIndicator.adaptive())
-        : LineChart(
+        : ClipRect(
+            child: LineChart(
             LineChartData(
+              clipData: const FlClipData.all(),
               lineTouchData: LineTouchData(handleBuiltInTouches: true),
               gridData: const FlGridData(show: false),
               titlesData: FlTitlesData(
@@ -65,6 +69,7 @@ class _LineChart extends StatelessWidget {
               minY: getMinY(spots),
               maxY: getMaxY(spots),
             ),
+          ),
           );
   }
 
@@ -78,23 +83,24 @@ class _LineChart extends StatelessWidget {
   SideTitles bottomTitles(List<FlSpot> spots) => SideTitles(
         showTitles: true,
         reservedSize: 32,
-        interval: 3,
+        interval: (numberOfValuesShown / 3).ceilToDouble(),
         getTitlesWidget: (double value, TitleMeta meta) {
           const style = TextStyle(
             fontWeight: FontWeight.bold,
             fontSize: 16,
           );
 
-          double minX = getMinX(spots);
-          double maxX = getMaxX(spots);
-
-          if (value == minX || value == maxX) {
+          final int index = value.round();
+          if (index <= 0 || index >= spots.length - 1) {
             return const Text('');
           }
 
-          String formattedTime = _formatTime(value.toInt());
+          if (index >= spotTimes.length) {
+            return const Text('');
+          }
+
           return Text(
-            formattedTime,
+            _formatTime(spotTimes[index]),
             style: style,
           );
         },
@@ -140,17 +146,9 @@ class _LineChart extends StatelessWidget {
     return maxY + 2;
   }
 
-  double getMaxX(List<FlSpot> spots) {
-    if (spots.length > numberOfValuesShown) return spots.last.x;
-    return 9.0;
-  }
+  double getMaxX(List<FlSpot> spots) => (numberOfValuesShown - 1).toDouble();
 
-  double getMinX(List<FlSpot> spots) {
-    if (spots.length > numberOfValuesShown) {
-      return spots.last.x - numberOfValuesShown;
-    }
-    return 0.0;
-  }
+  double getMinX(List<FlSpot> spots) => 0;
 
   double calculateYInterval(double minY, double maxY) {
     final range = maxY - minY;
@@ -172,13 +170,18 @@ class _LineChart extends StatelessWidget {
 
 class ChartWidget extends StatefulWidget {
   final String type;
+  final String? title;
   final Color lineColor;
   final String unit;
-  const ChartWidget(
-      {super.key,
-      required this.type,
-      required this.lineColor,
-      required this.unit});
+  const ChartWidget({
+    super.key,
+    required this.type,
+    this.title,
+    required this.lineColor,
+    required this.unit,
+  });
+
+  String get displayTitle => title ?? type;
 
   @override
   State<StatefulWidget> createState() => ChartWidgetState();
@@ -188,7 +191,9 @@ class ChartWidgetState extends State<ChartWidget> {
   StreamSubscription<Model>? _dataSubscription;
   double yValue = 0.0;
   final _spots = <FlSpot>[];
-  int numberOfValuesShown = 10;
+  final _spotTimes = <int>[];
+  // More points = slower horizontal scroll and line stays inside the chart.
+  int numberOfValuesShown = 100;
   String timeUnit = "seconds";
   double _xValue = 0;
   Model model = Model();
@@ -254,12 +259,17 @@ class ChartWidgetState extends State<ChartWidget> {
       yValue = model.getProperty(widget.type) ?? 0;
 
       if (yValue.isFinite) {
-        _spots.add(FlSpot(_xValue, yValue));
+        _spots.add(FlSpot(_spots.length.toDouble(), yValue));
+        _spotTimes.add(_xValue.toInt());
         _xValue += 1;
         _isLoading = false;
 
         if (_spots.length > numberOfValuesShown) {
           _spots.removeAt(0);
+          _spotTimes.removeAt(0);
+          for (var i = 0; i < _spots.length; i++) {
+            _spots[i] = FlSpot(i.toDouble(), _spots[i].y);
+          }
         }
       }
     });
@@ -276,7 +286,7 @@ class ChartWidgetState extends State<ChartWidget> {
             children: <Widget>[
               const SizedBox(height: 37),
               Text(
-                "${widget.type} ${yValue.toStringAsFixed(2)}${widget.unit}",
+                "${widget.displayTitle} ${yValue.toStringAsFixed(2)}${widget.unit}",
                 style: TextStyle(
                   color: widget.lineColor,
                   fontSize: 32,
@@ -291,10 +301,12 @@ class ChartWidgetState extends State<ChartWidget> {
                   padding: const EdgeInsets.only(right: 16, left: 6),
                   child: _LineChart(
                     spots: _spots,
+                    spotTimes: _spotTimes,
                     type: widget.type,
                     lineColor: widget.lineColor,
                     unit: widget.unit,
                     isLoading: _isLoading,
+                    numberOfValuesShown: numberOfValuesShown,
                   ),
                 ),
               ),

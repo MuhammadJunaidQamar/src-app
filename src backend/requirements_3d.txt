@@ -1,0 +1,20 @@
+# Requirements for CanSat Ground Station - 3D Enhanced Version
+
+# Core dependencies (required for both simple and 3D versions)
+pyserial>=3.5
+websockets>=10,<13
+pillow>=9.0
+
+# Additional dependencies for 3D visualization
+numpy>=1.21.0
+matplotlib>=3.5.0
+
+# Note: tkinter comes pre-installed with Python on most systems
+# If missing, install via system package manager:
+# - Ubuntu/Debian: sudo apt-get install python3-tk
+# - Fedora: sudo dnf install python3-tkinter
+# - macOS: brew install python-tk
+# - Windows: Included with Python installer
+
+
+

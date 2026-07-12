@@ -1,0 +1,13 @@
+class TeamMember {
+  final String name;
+  final String role;
+  final String imagePath;
+  final String? linkedInUrl;
+
+  const TeamMember({
+    required this.name,
+    required this.role,
+    required this.imagePath,
+    this.linkedInUrl,
+  });
+}

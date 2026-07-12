@@ -1,5 +1,4 @@
-import 'dart:io';
-
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:src/widgets/custom_card_widget.dart';
 import 'package:src/widgets/header_widget.dart';
@@ -22,9 +21,12 @@ class GeoLocationScreen extends StatelessWidget {
                 const HeaderWidget(),
                 Expanded(
                   child: CustomCard(
-                    child: Platform.isAndroid || Platform.isIOS
-                        ? LiveGeoLocationOnMobileWidget()
-                        : LiveGeoLocationOnDesktopWidget(),
+                    expandChild: true,
+                    child: (!kIsWeb &&
+                            (defaultTargetPlatform == TargetPlatform.android ||
+                                defaultTargetPlatform == TargetPlatform.iOS))
+                        ? const LiveGeoLocationOnMobileWidget()
+                        : const LiveGeoLocationOnDesktopWidget(),
                   ),
                 ),
               ],

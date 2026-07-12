@@ -3,153 +3,502 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>Live Geo Location on Mapbox Globe</title>
-    <link href='https://api.mapbox.com/mapbox-gl-js/v2.10.0/mapbox-gl.css' rel='stylesheet' />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Live Geo Location</title>
+    <link href="https://api.mapbox.com/mapbox-gl-js/v3.25.0/mapbox-gl.css" rel="stylesheet" />
     <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        html,
         body {
             margin: 0;
             padding: 0;
-            font-family: Arial, sans-serif;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #10151d;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
         }
 
         #map {
             position: absolute;
-            top: 0;
-            bottom: 0;
-            width: 100%;
+            inset: 0;
+            background-color: #10151d;
         }
 
         .loading {
+            position: absolute;
+            inset: 0;
             display: flex;
+            flex-direction: column;
             justify-content: center;
             align-items: center;
-            height: 100vh;
-            font-size: 24px;
-            background-color: rgba(255, 255, 255, 0.8);
+            gap: 8px;
+            font-size: 15px;
+            color: #bfc7d2;
+            background-color: #10151d;
+            z-index: 2;
+            text-align: center;
+            padding: 24px;
+        }
+
+        /* Match native mobile SDK: logo + attribution together, bottom-left. */
+        .mapboxgl-ctrl-bottom-left {
+            left: 8px;
+            bottom: 8px;
         }
     </style>
-    <script src='https://api.mapbox.com/mapbox-gl-js/v2.10.0/mapbox-gl.js'></script>
 </head>
 
 <body>
-
     <div id="map"></div>
-    <div id="loading" class="loading">Loading...</div>
+    <div id="loading" class="loading">
+        <div>Loading map…</div>
+        <div id="loading-detail" style="font-size:12px;opacity:0.75;"></div>
+    </div>
 
+    <script src="https://api.mapbox.com/mapbox-gl-js/v3.25.0/mapbox-gl.js"></script>
     <script>
-        mapboxgl.accessToken = 'pk.eyJ1IjoidW5pdmVyc2l0eS1vZi1jZW50cmFsLXB1bmphYiIsImEiOiJjbTFvcmdnOG4wa3puMmlzZjk3eXZ0MTV6In0.L1iyBcvvQon1-1z-0v1hPw'; // Add your Mapbox access token here
-
         let map;
         let marker;
-        let ws;
-        let reconnectInterval;
-        const latitude = 31.4469;
-        const longitude = 74.2682;
+        let followCamera = true;
+        let ignoreCameraEvents = false;
+        let ignoreCameraTimer = null;
+        let currentLng = 74.2682;
+        let currentLat = 31.4469;
+        let rafId = null;
+        // While a flyTo (load / recenter) is running, don't jumpTo — that
+        // cancels the animation and leaves the map stuck zoomed-out.
+        let cameraBusyUntil = 0;
+        let lastCameraSync = 0;
+        const CAMERA_SYNC_MS = 50;
 
-        function initMap() {
-            map = new mapboxgl.Map({
-                container: 'map',
-                style: 'mapbox://styles/mapbox/satellite-v9', // Change style for globe rendering
-                center: [longitude, latitude],
-                zoom: 3, // Start with a lower zoom for globe view
-                projection: 'globe' // Enable globe projection
-            });
+        const RECENTER_MS = 1200;
+        const FOLLOW_MIN_MS = 450;
+        const FOLLOW_MAX_MS = 2800;
+        const FOLLOW_MS_PER_METER = 18;
+        const FOLLOW_EASE_STRENGTH = 0.85;
+        const DEFAULT_TOKEN =
+            'pk.eyJ1IjoidW5pdmVyc2l0eS1vZi1jZW50cmFsLXB1bmphYiIsImEiOiJjbTFvcmdnOG4wa3puMmlzZjk3eXZ0MTV6In0.L1iyBcvvQon1-1z-0v1hPw';
+        const DEFAULT_STYLE =
+            'mapbox://styles/university-of-central-punjab/cm1v3ghd9016b01pe3gmwb9g4';
+        const DEFAULT_SHOW_3D_OBJECTS = true;
+        const DEFAULT_LIGHT_PRESET = 'dusk';
+        const DEFAULT_THEME = 'default';
+        const DEFAULT_ICON = 'http://localhost:8080/icons/satellite.png';
+        const DEFAULT_ZOOM = 17;
+        const DEFAULT_BEARING = 0;
+        const DEFAULT_PITCH = 30;
 
-            map.on('load', () => {
-                document.getElementById('loading').style.display = 'none';
+        // Interruptible chase: display eases toward the latest GPS target.
+        // New samples retarget from the current display point (no snap/jitter).
+        const smoother = {
+            displayLng: currentLng,
+            displayLat: currentLat,
+            startLng: currentLng,
+            startLat: currentLat,
+            targetLng: currentLng,
+            targetLat: currentLat,
+            startedAt: 0,
+            durationMs: FOLLOW_MIN_MS,
+            animating: false,
 
-                // Set the atmosphere and fog to enhance the globe view
-                map.setFog({}); // Default atmosphere style
-            });
+            setTarget(lng, lat, snap) {
+                if (snap) {
+                    this.displayLng = lng;
+                    this.displayLat = lat;
+                    this.startLng = lng;
+                    this.startLat = lat;
+                    this.targetLng = lng;
+                    this.targetLat = lat;
+                    this.animating = false;
+                    return;
+                }
+                this.startLng = this.displayLng;
+                this.startLat = this.displayLat;
+                this.targetLng = lng;
+                this.targetLat = lat;
+                const meters = haversineMeters(
+                    this.startLat, this.startLng, this.targetLat, this.targetLng,
+                );
+                this.durationMs = Math.min(
+                    FOLLOW_MAX_MS,
+                    Math.max(
+                        FOLLOW_MIN_MS,
+                        Math.round(FOLLOW_MIN_MS + meters * FOLLOW_MS_PER_METER),
+                    ),
+                );
+                this.startedAt = performance.now();
+                this.animating = meters > 0.05;
+                if (!this.animating) {
+                    this.displayLng = lng;
+                    this.displayLat = lat;
+                }
+            },
 
-            marker = new mapboxgl.Marker()
-                .setLngLat([longitude, latitude])
-                .addTo(map);
+            tick(now) {
+                if (!this.animating) return false;
+                const elapsed = now - this.startedAt;
+                if (elapsed >= this.durationMs) {
+                    this.displayLng = this.targetLng;
+                    this.displayLat = this.targetLat;
+                    this.animating = false;
+                    return true;
+                }
+                const t = easeOut(elapsed / this.durationMs);
+                this.displayLng = lerp(this.startLng, this.targetLng, t);
+                this.displayLat = lerp(this.startLat, this.targetLat, t);
+                return true;
+            },
+        };
 
-            map.flyTo({
-                center: [longitude, latitude],
-                zoom: 17,
-                bearing: 180,
-                pitch: 30,
-                duration: 4000
-            });
+        function lerp(a, b, t) { return a + (b - a) * t; }
 
-            map.on('click', onMapClick);
-            map.on('move', () => {
-                console.log('Map is being interacted with');
-            });
-
-            // Connect to WebSocket for real-time updates
-            connectWebSocket();
+        function easeOut(t) {
+            const c = Math.max(0, Math.min(1, t));
+            const eased = 1 - Math.pow(1 - c, 3);
+            return lerp(c, eased, FOLLOW_EASE_STRENGTH);
         }
 
-        function connectWebSocket() {
+        function toRad(deg) { return deg * Math.PI / 180; }
+
+        function haversineMeters(lat1, lon1, lat2, lon2) {
+            const R = 6371000;
+            const dLat = toRad(lat2 - lat1);
+            const dLon = toRad(lon2 - lon1);
+            const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+                Math.sin(dLon / 2) * Math.sin(dLon / 2);
+            return 2 * R * Math.asin(Math.sqrt(a));
+        }
+
+        function syncDisplayToMap() {
+            if (!map || !marker) return;
+            marker.setLngLat([smoother.displayLng, smoother.displayLat]);
+            if (!followCamera) return;
+            if (performance.now() < cameraBusyUntil) return;
+
+            const now = performance.now();
+            if (now - lastCameraSync < CAMERA_SYNC_MS) return;
+            lastCameraSync = now;
+
+            ignoreCameraEvents = true;
+            map.easeTo({
+                center: [smoother.displayLng, smoother.displayLat],
+                duration: CAMERA_SYNC_MS,
+                essential: true,
+            });
+            // Brief ignore so our chase updates don't kill followCamera.
+            if (ignoreCameraTimer) clearTimeout(ignoreCameraTimer);
+            ignoreCameraTimer = setTimeout(() => {
+                ignoreCameraEvents = false;
+                ignoreCameraTimer = null;
+            }, CAMERA_SYNC_MS + 10);
+        }
+
+        function flyCameraTo(lng, lat, durationMs) {
+            cameraBusyUntil = performance.now() + durationMs + 100;
+            withIgnoredCameraEvents(durationMs + 100, () => {
+                map.flyTo({
+                    ...cameraOptions(lng, lat),
+                    duration: durationMs,
+                });
+            });
+        }
+
+        function ensureChaseLoop() {
+            if (rafId != null) return;
+            const step = (now) => {
+                const moved = smoother.tick(now);
+                if (moved) syncDisplayToMap();
+                if (smoother.animating) {
+                    rafId = requestAnimationFrame(step);
+                } else {
+                    rafId = null;
+                }
+            };
+            rafId = requestAnimationFrame(step);
+        }
+
+        function setLoadingDetail(text) {
+            const el = document.getElementById('loading-detail');
+            if (el) el.textContent = text;
+        }
+
+        function notifyFlutter(event, payload) {
+            if (!window.flutter_inappwebview) return;
+            if (payload === undefined) {
+                window.flutter_inappwebview.callHandler(event);
+                return;
+            }
+            window.flutter_inappwebview.callHandler(event, payload);
+        }
+
+        function cameraOptions(lng, lat) {
+            return {
+                center: [lng, lat],
+                zoom: DEFAULT_ZOOM,
+                bearing: DEFAULT_BEARING,
+                pitch: DEFAULT_PITCH,
+            };
+        }
+
+        function withIgnoredCameraEvents(durationMs, fn) {
+            if (ignoreCameraTimer) clearTimeout(ignoreCameraTimer);
+            ignoreCameraEvents = true;
+            fn();
+            ignoreCameraTimer = setTimeout(() => {
+                ignoreCameraEvents = false;
+                ignoreCameraTimer = null;
+            }, durationMs);
+        }
+
+        function readConfig() {
+            const params = new URLSearchParams(window.location.search);
+            return {
+                token: params.get('token') || DEFAULT_TOKEN,
+                styleUri: params.get('style') || DEFAULT_STYLE,
+                iconUrl: params.get('icon') || DEFAULT_ICON,
+                lng: parseFloat(params.get('lng')) || currentLng,
+                lat: parseFloat(params.get('lat')) || currentLat,
+                show3dObjects: params.get('show3dObjects') === null
+                    ? DEFAULT_SHOW_3D_OBJECTS
+                    : params.get('show3dObjects') !== '0',
+                lightPreset: params.get('lightPreset') || DEFAULT_LIGHT_PRESET,
+                theme: params.get('theme') || DEFAULT_THEME,
+            };
+        }
+
+        function applyBasemapConfig(config) {
+            if (!map || typeof map.setConfigProperty !== 'function') return;
             try {
-                console.log('Connecting to WebSocket: ws://localhost:8765/telemetry');
-                ws = new WebSocket('ws://localhost:8765/telemetry');
-
-                ws.onopen = () => {
-                    console.log('WebSocket connected');
-                    if (reconnectInterval) {
-                        clearTimeout(reconnectInterval);
-                        reconnectInterval = null;
-                    }
-                };
-
-                ws.onmessage = (event) => {
-                    try {
-                        const data = JSON.parse(event.data);
-                        updateLocation(data);
-                    } catch (error) {
-                        console.error('Error parsing WebSocket message:', error);
-                    }
-                };
-
-                ws.onerror = (error) => {
-                    console.error('WebSocket error:', error);
-                };
-
-                ws.onclose = () => {
-                    console.log('WebSocket disconnected. Attempting to reconnect in 3 seconds...');
-                    reconnectInterval = setTimeout(connectWebSocket, 3000);
-                };
-            } catch (error) {
-                console.error('Failed to connect to WebSocket:', error);
-                reconnectInterval = setTimeout(connectWebSocket, 3000);
+                map.setConfigProperty('basemap', 'lightPreset', config.lightPreset);
+                map.setConfigProperty('basemap', 'theme', config.theme);
+                map.setConfigProperty('basemap', 'show3dObjects', config.show3dObjects);
+            } catch (e) {
+                console.warn('Failed to apply basemap config', e);
             }
         }
 
-        function updateLocation(data) {
-            try {
-                // Support both flat format (WebSocket) and nested format (old API)
-                let newLat, newLng;
-                
-                if (data.lat !== undefined && data.lon !== undefined) {
-                    // Flat format from WebSocket
-                    newLat = data.lat || latitude;
-                    newLng = data.lon || longitude;
-                } else if (data.GPS) {
-                    // Nested format
-                    newLat = data.GPS.latitude || latitude;
-                    newLng = data.GPS.longitude || longitude;
-                } else {
-                    return; // No GPS data
+        function createMarker(lng, lat, iconUrl) {
+            const el = document.createElement('img');
+            el.src = iconUrl;
+            // Native mobile SDK renders satellite.png (512px) at iconSize 0.2 ≈ 102px.
+            el.style.width = '102px';
+            el.style.height = '102px';
+            el.draggable = false;
+            return new mapboxgl.Marker({ element: el, anchor: 'center' })
+                .setLngLat([lng, lat])
+                .addTo(map);
+        }
+
+        function showLoadError(message) {
+            const loading = document.getElementById('loading');
+            loading.style.display = 'flex';
+            loading.innerHTML =
+                '<div>Map failed to load</div>' +
+                '<div style="font-size:12px;opacity:0.8;margin-top:8px;">' +
+                message +
+                '</div>';
+            notifyFlutter('mapError', message);
+        }
+
+        window.mapBridge = {
+            init(token, styleUri, iconUrl, lng, lat) {
+                if (map) return;
+                this._boot(
+                    token,
+                    styleUri,
+                    iconUrl,
+                    lng,
+                    lat,
+                    DEFAULT_LIGHT_PRESET,
+                    DEFAULT_THEME,
+                    DEFAULT_SHOW_3D_OBJECTS,
+                );
+            },
+
+            resize() {
+                if (map) map.resize();
+            },
+
+            // Mouse wheel zoom, forwarded from Flutter. Zoom does not break
+            // follow — the camera stays locked on the satellite at the new zoom.
+            wheelZoom(deltaY, ctrlKey) {
+                if (!map) return;
+                const factor = ctrlKey ? 0.0035 : 0.0025;
+                map.zoomTo(map.getZoom() - deltaY * factor, { duration: 0 });
+            },
+
+            // Two-finger trackpad swipe pans the map, like touch-drag on mobile.
+            setUserInteracting(active) {
+                if (active) followCamera = false;
+            },
+
+            panStart() {
+                if (!map) return;
+                if (!ignoreCameraEvents) followCamera = false;
+            },
+
+            panBy(dx, dy) {
+                if (!map) return;
+                if (!ignoreCameraEvents) followCamera = false;
+                map.panBy([-dx, -dy], { duration: 0 });
+            },
+
+            // Trackpad pinch (zoomDelta in map zoom levels, log2 of scale change).
+            pinchZoom(zoomDelta) {
+                if (!map) return;
+                map.zoomTo(map.getZoom() + zoomDelta, { duration: 0 });
+            },
+
+            // Explicit +/- buttons from Flutter desktop UI.
+            zoomBy(delta) {
+                if (!map) return;
+                map.zoomTo(map.getZoom() + delta, { duration: 120 });
+            },
+
+            _boot(token, styleUri, iconUrl, lng, lat, lightPreset, theme, show3dObjects) {
+                if (!window.mapboxgl) {
+                    showLoadError('Mapbox GL failed to download. Check internet access.');
+                    return;
                 }
 
-                marker.setLngLat([newLng, newLat]);
-                console.log(`Updated coordinates: Lat: ${newLat}, Lng: ${newLng}`);
-            } catch (error) {
-                console.error('Error updating location:', error);
+                if (map) {
+                    map.remove();
+                    map = null;
+                    marker = null;
+                }
+
+                mapboxgl.accessToken = token;
+                currentLng = lng;
+                currentLat = lat;
+                smoother.setTarget(lng, lat, true);
+                setLoadingDetail('Starting Mapbox…');
+
+                map = new mapboxgl.Map({
+                    container: 'map',
+                    style: styleUri,
+                    center: [lng, lat],
+                    zoom: DEFAULT_ZOOM,
+                    bearing: DEFAULT_BEARING,
+                    pitch: DEFAULT_PITCH,
+                    antialias: true,
+                    projection: 'globe',
+                    cooperativeGestures: false,
+                    // Zoom gestures are forwarded explicitly from Flutter
+                    // (wheelZoom/pinchZoom) to avoid double-handling.
+                    scrollZoom: false,
+                    boxZoom: true,
+                    dragRotate: true,
+                    dragPan: true,
+                    keyboard: true,
+                    doubleClickZoom: true,
+                    touchZoomRotate: true,
+                    touchPitch: true,
+                    // Added manually below, bottom-left, like the native mobile SDK.
+                    attributionControl: false,
+                });
+
+                map.addControl(
+                    new mapboxgl.AttributionControl({ compact: true }),
+                    'bottom-left',
+                );
+
+                const basemapConfig = { lightPreset, theme, show3dObjects };
+                map.on('style.load', () => applyBasemapConfig(basemapConfig));
+
+                map.on('load', () => {
+                    applyBasemapConfig(basemapConfig);
+                    map.resize();
+                    document.getElementById('loading').style.display = 'none';
+                    marker = createMarker(lng, lat, iconUrl);
+                    // Already at default zoom / pitch — only soft-recenter if needed.
+                    flyCameraTo(lng, lat, RECENTER_MS);
+                    setTimeout(() => map.resize(), RECENTER_MS + 100);
+                    notifyFlutter('mapLoaded', { lng, lat });
+                });
+
+                map.on('error', (event) => {
+                    console.error('Mapbox error:', event);
+                    const message =
+                        (event && event.error && event.error.message) ||
+                        'Could not load map tiles. Check your Mapbox token.';
+                    showLoadError(message);
+                });
+
+                map.on('click', (event) => {
+                    const { lng: tapLng, lat: tapLat } = event.lngLat;
+                    notifyFlutter('mapTap', { lng: tapLng, lat: tapLat });
+                });
+
+                map.on('dragstart', () => {
+                    if (!ignoreCameraEvents) followCamera = false;
+                });
+            },
+
+            updatePosition(lng, lat, animate, allowFollow) {
+                if (!map || !marker) return;
+                if (allowFollow === false) followCamera = false;
+                currentLng = lng;
+                currentLat = lat;
+                // animate=false is used on first sync after load — snap the
+                // marker only. Do not jumpTo the camera or we cancel flyTo
+                // and leave the map stuck zoomed out.
+                smoother.setTarget(lng, lat, animate === false);
+                if (animate === false) {
+                    marker.setLngLat([smoother.displayLng, smoother.displayLat]);
+                    return;
+                }
+                ensureChaseLoop();
+            },
+
+            recenter() {
+                if (!map) return;
+                followCamera = true;
+                lastCameraSync = 0;
+                smoother.setTarget(currentLng, currentLat, true);
+                marker.setLngLat([currentLng, currentLat]);
+                flyCameraTo(currentLng, currentLat, RECENTER_MS);
+            },
+        };
+
+        function bootFromQuery() {
+            const config = readConfig();
+            window.mapBridge._boot(
+                config.token,
+                config.styleUri,
+                config.iconUrl,
+                config.lng,
+                config.lat,
+                config.lightPreset,
+                config.theme,
+                config.show3dObjects,
+            );
+        }
+
+        function waitForMapboxAndBoot() {
+            if (window.mapboxgl) {
+                bootFromQuery();
+                return;
             }
+            setLoadingDetail('Downloading Mapbox GL…');
+            let attempts = 0;
+            const timer = setInterval(() => {
+                attempts += 1;
+                if (window.mapboxgl) {
+                    clearInterval(timer);
+                    bootFromQuery();
+                } else if (attempts > 120) {
+                    clearInterval(timer);
+                    showLoadError('Timed out waiting for Mapbox GL.');
+                }
+            }, 100);
         }
 
-        function onMapClick(e) {
-            const coordinates = e.lngLat;
-            alert(`Coordinates:\nLng: ${coordinates.lng}, Lat: ${coordinates.lat}`);
-        }
-
-        window.onload = initMap;
+        window.addEventListener('load', waitForMapboxAndBoot);
     </script>
 </body>
 
