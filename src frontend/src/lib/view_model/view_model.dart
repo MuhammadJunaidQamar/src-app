@@ -8,6 +8,7 @@ import 'package:flutter_blue_plus_platform_interface/flutter_blue_plus_platform_
 import 'package:http/http.dart' as http;
 import 'package:src/model/model.dart';
 import 'package:src/utils/connection/connection_config.dart';
+import 'package:src/utils/connection/ground_station_discovery.dart';
 import 'package:src/utils/connection/telemetry_simulator.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
@@ -552,24 +553,72 @@ class ViewModel {
     return false;
   }
 
-  /// After joining the GS Wi‑Fi AP, verify code at http://192.168.4.1/pair
-  Future<bool> pairWifiWithCode(String code) async {
+  /// Verify the 6-digit code at http://<host>/pair.
+  ///
+  /// Wi‑Fi AP mode uses the fixed SoftAP address (192.168.4.1). Router (LAN)
+  /// mode usually finds the host via [pairRouterWithCode] (UDP discovery).
+  Future<bool> pairWifiWithCode(String code, {String host = '192.168.4.1'}) async {
     final digits = code.replaceAll(RegExp(r'\D'), '');
     if (digits.length != 6) return false;
 
     try {
-      final uri = Uri.parse('http://192.168.4.1/pair?code=$digits');
+      final uri = Uri.parse('http://$host/pair?code=$digits');
       final resp = await http.get(uri).timeout(const Duration(seconds: 6));
       final ok = resp.statusCode == 200 && resp.body.contains('"pair":"ok"');
       if (ok) {
         _linkPaired = true;
-        if (kDebugMode) debugPrint('[WiFi] Pairing OK');
+        if (kDebugMode) debugPrint('[WiFi] Pairing OK ($host)');
       }
       return ok;
     } catch (e) {
-      if (kDebugMode) debugPrint('[WiFi pair] $e');
+      if (kDebugMode) debugPrint('[WiFi pair] $host: $e');
       return false;
     }
+  }
+
+  /// Router mode: discover stations on the LAN, then pair with the one that
+  /// accepts [code]. Returns the matched host IP, or null on failure.
+  ///
+  /// Optional [manualHost] skips discovery (fallback / web).
+  Future<String?> pairRouterWithCode(
+    String code, {
+    String? manualHost,
+  }) async {
+    final digits = code.replaceAll(RegExp(r'\D'), '');
+    if (digits.length != 6) return null;
+
+    final hosts = <String>[];
+    final manual = manualHost?.trim();
+    if (manual != null && manual.isNotEmpty) {
+      hosts.add(manual);
+    } else {
+      if (kDebugMode) debugPrint('[Router] Discovering ground stations…');
+      final found = await discoverGroundStationHosts(
+        listenFor: const Duration(seconds: 3),
+      );
+      hosts.addAll(found);
+      final known = ConnectionConfig.routerHost.trim();
+      if (known.isNotEmpty && !hosts.contains(known)) {
+        hosts.add(known);
+      }
+    }
+
+    if (hosts.isEmpty) {
+      if (kDebugMode) debugPrint('[Router] No stations discovered');
+      return null;
+    }
+
+    if (kDebugMode) debugPrint('[Router] Trying hosts: $hosts');
+    for (final host in hosts) {
+      final ok = await pairWifiWithCode(digits, host: host);
+      if (ok) {
+        ConnectionConfig.setRouterHost(host);
+        return host;
+      }
+      // Wrong code on this host — keep looking (other teams' stations).
+      _linkPaired = false;
+    }
+    return null;
   }
 
   /// Start built-in demo telemetry (no hardware).

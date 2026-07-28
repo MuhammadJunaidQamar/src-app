@@ -25,6 +25,8 @@ class _GroundStationPairingScreenState extends State<GroundStationPairingScreen>
   final _vm = ViewModel();
   final _codeController = TextEditingController();
   final _codeFocus = FocusNode();
+  final _hostController =
+      TextEditingController(text: ConnectionConfig.routerHost);
 
   StreamSubscription<List<ScanResult>>? _scanSub;
   StreamSubscription<Model>? _dataSub;
@@ -35,6 +37,7 @@ class _GroundStationPairingScreenState extends State<GroundStationPairingScreen>
   bool _busy = false;
   String? _error;
   bool _navigated = false;
+  bool _showManualIp = kIsWeb;
 
   @override
   void initState() {
@@ -55,6 +58,7 @@ class _GroundStationPairingScreenState extends State<GroundStationPairingScreen>
     _dataSub?.cancel();
     _codeController.dispose();
     _codeFocus.dispose();
+    _hostController.dispose();
     _vm.stopBleDiscovery();
     super.dispose();
   }
@@ -189,6 +193,32 @@ class _GroundStationPairingScreenState extends State<GroundStationPairingScreen>
         _dataSub = _vm.dataStream.listen((_) => _goToApp());
         await Future.delayed(const Duration(milliseconds: 800));
         _goToApp();
+        return;
+      }
+
+      if (ConnectionConfig.selectedMode == ConnectionMode.routerGroundStation) {
+        final manual = _showManualIp ? _hostController.text.trim() : null;
+        final host = await _vm.pairRouterWithCode(
+          code,
+          manualHost: (manual != null && manual.isNotEmpty) ? manual : null,
+        );
+        if (host == null) {
+          setState(() {
+            _error = _showManualIp && (manual == null || manual.isEmpty)
+                ? 'Enter the ground-station IP, or turn off manual IP so the '
+                    'app can find it on this Wi‑Fi.'
+                : 'Wrong code or no ground station found on this Wi‑Fi. '
+                    'Stay on the same router as the station, check Serial for '
+                    'the latest code, then retry'
+                    '${_showManualIp ? '.' : ' — or tap “Enter IP manually”.'}';
+            _busy = false;
+          });
+          return;
+        }
+        _vm.connectWithSelectedMode();
+        _dataSub = _vm.dataStream.listen((_) => _goToApp());
+        await Future.delayed(const Duration(milliseconds: 800));
+        _goToApp();
       }
     } catch (e) {
       setState(() {
@@ -196,6 +226,22 @@ class _GroundStationPairingScreenState extends State<GroundStationPairingScreen>
         _busy = false;
       });
     }
+  }
+
+  String _instructionsText() {
+    if (ConnectionConfig.usesBle) {
+      return '1. Open Serial Monitor on your ground station (115200 baud).\n'
+          '2. Note the 6-digit PAIRING CODE.\n'
+          '3. Select your station below, enter the code, tap Verify.';
+    }
+    if (ConnectionConfig.selectedMode == ConnectionMode.routerGroundStation) {
+      return '1. Connect this device to the same Wi‑Fi router as your ground station.\n'
+          '2. On the station Serial monitor (115200 baud), note the 6-digit PAIRING CODE.\n'
+          '3. Enter the code and tap Verify — the app finds your station on the LAN.';
+    }
+    return '1. Join Wi‑Fi "CanSat-GS" on this phone.\n'
+        '2. Note the 6-digit PAIRING CODE on Serial.\n'
+        '3. Enter the code and tap Verify.';
   }
 
   void _goToApp() {
@@ -275,13 +321,7 @@ class _GroundStationPairingScreenState extends State<GroundStationPairingScreen>
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    ConnectionConfig.usesBle
-                        ? '1. Open Serial Monitor on your ground station (115200 baud).\n'
-                            '2. Note the 6-digit PAIRING CODE.\n'
-                            '3. Select your station below, enter the code, tap Verify.'
-                        : '1. Join Wi‑Fi "CanSat-GS" on this phone.\n'
-                            '2. Note the 6-digit PAIRING CODE on Serial.\n'
-                            '3. Enter the code and tap Verify.',
+                    _instructionsText(),
                     style: const TextStyle(
                       color: AppColors.mainTextColor2,
                       fontSize: 13,
@@ -328,6 +368,67 @@ class _GroundStationPairingScreenState extends State<GroundStationPairingScreen>
                 )
               else
                 ..._devices.map(_deviceTile),
+            ],
+            if (ConnectionConfig.selectedMode ==
+                ConnectionMode.routerGroundStation) ...[
+              const SizedBox(height: 12),
+              if (!_showManualIp)
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton(
+                    onPressed: _busy
+                        ? null
+                        : () => setState(() => _showManualIp = true),
+                    child: const Text('Enter IP manually'),
+                  ),
+                )
+              else ...[
+                Row(
+                  children: [
+                    const Text(
+                      'Ground station IP',
+                      style: TextStyle(
+                        color: AppColors.contentColorWhite,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const Spacer(),
+                    if (!kIsWeb)
+                      TextButton(
+                        onPressed: _busy
+                            ? null
+                            : () => setState(() => _showManualIp = false),
+                        child: const Text('Auto-find'),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _hostController,
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
+                  inputFormatters: [
+                    FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+                  ],
+                  style: const TextStyle(
+                    color: AppColors.contentColorWhite,
+                    fontSize: 18,
+                    letterSpacing: 1.5,
+                  ),
+                  textAlign: TextAlign.center,
+                  decoration: const InputDecoration(
+                    hintText: '192.168.1.42',
+                    hintStyle: TextStyle(color: AppColors.mainTextColor3),
+                    enabledBorder: OutlineInputBorder(
+                      borderSide: BorderSide(color: AppColors.borderColor),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderSide:
+                          BorderSide(color: AppColors.spanishSkyBlueColor),
+                    ),
+                  ),
+                ),
+              ],
             ],
             const SizedBox(height: 20),
             TextField(

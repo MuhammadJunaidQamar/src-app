@@ -34,8 +34,12 @@
   uint8_t flag_read_Pressure = SET;
 
   unsigned long sent_pkt_count, dropped_pkt_count, tic_status_msg, toc_status_msg, toc;
-  unsigned long tic_env, tic_Alt, tic_GPS;
+  unsigned long tic_env, tic_Alt, tic_GPS, tic_send;
   unsigned long T_env = 2000, T_Alt = 1000, T_GPS = 1000, T_status_msg;
+  // ESP-NOW TX period (ms). 50 ms = 20 Hz — matches the app's display rate and
+  // leaves the 2.4 GHz channel free for the ESP32-CAM's packet bursts.
+  // The old code sent every ~3 ms (~300 Hz) which starved the camera.
+  unsigned long T_send = 50;
   uint8_t ref_alt = 217;                   // Lahore's Altitude with reference to Sea Level
 
 
@@ -408,6 +412,7 @@ void setup() {
   tic_env = millis();
   tic_Alt = millis();
   tic_GPS = millis();
+  tic_send = millis();
   
 }
 
@@ -543,8 +548,11 @@ void loop() {
     tic_GPS = toc;
   }
 
-  // 6-----  Send Packet 
+  // 6-----  Send Packet (throttled to T_send so the camera gets airtime)
   myData.Header = 2864434397;
+  toc = millis();
+  if( (toc - tic_send) >= T_send ){
+    tic_send = toc;
     if(flag_Wifi_Comm == SET){                  // Send data over Wifi via ESP-NOW
         esp_err_t result = esp_now_send(broadcastAddress, (uint8_t *) &myData, sizeof(myData));
         toc_status_msg = millis();
@@ -572,6 +580,7 @@ void loop() {
       delay(DELAY_AFTER_WIRED_TX);            // Wait time for Transferring 36 bytes at 115200 is 2.6ms
 
     }
+  }
  
 
 

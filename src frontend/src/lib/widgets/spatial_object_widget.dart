@@ -124,23 +124,31 @@ class _SpatialObjectWidgetState extends State<SpatialObjectWidget>
   }
 
   void _applyTelemetry(Model model) {
-    // Prefer the pre-computed orientation from the ESP32.
-    // The real CanSat firmware sends roll & pitch in RADIANS but yaw in DEGREES
-    // (compass heading). Detect degrees by checking |yaw| > 2π (~6.28).
-    if (model.roll != null && model.pitch != null && model.yaw != null) {
-      _targetRoll  = model.roll!;
+    // Prefer pre-computed orientation from the ESP32 when it is real data.
+    // Legacy CANSAT packets often arrive as roll=pitch=yaw=0 — treat that as
+    // missing and fall back to accel/mag so the 3D view still moves.
+    // Yaw may be degrees (compass); convert when |yaw| > 2π.
+    final hasOri =
+        model.roll != null && model.pitch != null && model.yaw != null;
+    final oriLooksEmpty = hasOri &&
+        model.roll!.abs() < 1e-6 &&
+        model.pitch!.abs() < 1e-6 &&
+        model.yaw!.abs() < 1e-6;
+
+    if (hasOri && !oriLooksEmpty) {
+      _targetRoll = model.roll!;
       _targetPitch = model.pitch!;
       final rawYaw = model.yaw!;
-      _targetYaw   = rawYaw.abs() > math.pi * 2
-          ? rawYaw * math.pi / 180.0   // degrees → radians
-          : rawYaw;                    // already radians (sample data)
+      _targetYaw = rawYaw.abs() > math.pi * 2
+          ? rawYaw * math.pi / 180.0
+          : rawYaw;
       return;
     }
 
     final accel = model.acceleration;
     if (accel == null) return;
     final tilt = _tiltFromAccel(accel);
-    _targetRoll  = tilt.roll;
+    _targetRoll = tilt.roll;
     _targetPitch = tilt.pitch;
     final mag = model.distance;
     if (mag != null && tilt.ok) {

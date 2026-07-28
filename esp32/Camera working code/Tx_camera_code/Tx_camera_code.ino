@@ -3,9 +3,17 @@
 #include <esp_now.h>
 #include <esp_wifi.h>
 
-// !! MUST match BLE ground station boot line:
-//   [BOOT] MAC (use in Tx_camera receiverMAC): XX:XX:XX:XX:XX:XX
-uint8_t receiverMAC[] = {0x28, 0x56, 0x2F, 0x77, 0x76, 0x30};
+// !! MUST match the MAC your ground station prints at boot:
+//   BLE GS   : "[BOOT] MAC (use in Tx_camera receiverMAC): XX:XX:..."
+//   Router GS: "GS MAC      : XX:XX:..."  (STA MAC)
+//   Wi-Fi GS : "GS MAC (AP) : XX:XX:..."  (AP MAC — NOT the STA one)
+uint8_t receiverMAC[] = {0x28, 0x56, 0x2F, 0x4B, 0x57, 0x58};
+
+// Fallback only. At boot the sender probes channels 1-13 and locks onto the
+// one where the ground station ACKs (needed for the Router GS, whose channel
+// is decided by the router — e.g. channel 6). BLE / Wi-Fi-AP stations are on
+// channel 1 and are found by the same probe.
+#define CAM_FALLBACK_CHANNEL 1
 
 typedef struct __attribute__((packed))
 {
@@ -22,6 +30,18 @@ Packet packet;
 
 esp_now_peer_info_t peerInfo;
 uint16_t frame_id = 0;
+
+// Delivery status of the last unicast — the MAC-layer ACK tells us whether
+// the ground station heard us (used for channel probing and link watchdog).
+volatile bool sendStatusKnown = false;
+volatile bool sendOk = false;
+
+void onDataSent(const wifi_tx_info_t *info, esp_now_send_status_t status)
+{
+  (void)info;
+  sendOk = (status == ESP_NOW_SEND_SUCCESS);
+  sendStatusKnown = true;
+}
 
 // ================= CAMERA PINS (AI THINKER) =================
 #define PWDN_GPIO_NUM 32
@@ -80,12 +100,54 @@ void initCamera()
   esp_camera_init(&config);
 }
 
+// ================= CHANNEL PROBING =================
+// A unicast frame is ACKed at the MAC layer by the radio that owns
+// receiverMAC — so a successful delivery means "GS is on this channel".
+bool probeChannel(uint8_t ch)
+{
+  esp_wifi_set_channel(ch, WIFI_SECOND_CHAN_NONE);
+  delay(5);
+
+  for (int attempt = 0; attempt < 3; attempt++)
+  {
+    sendStatusKnown = false;
+    uint8_t probe = 0xC5; // 1-byte payload; ground stations ignore it
+    if (esp_now_send(receiverMAC, &probe, 1) != ESP_OK)
+    {
+      delay(10);
+      continue;
+    }
+    uint32_t t0 = millis();
+    while (!sendStatusKnown && millis() - t0 < 100)
+      delay(1);
+    if (sendStatusKnown && sendOk)
+      return true;
+  }
+  return false;
+}
+
+void findGroundStationChannel()
+{
+  Serial.println("[CAM-TX] searching for ground station channel...");
+  for (uint8_t ch = 1; ch <= 13; ch++)
+  {
+    if (probeChannel(ch))
+    {
+      Serial.printf("[CAM-TX] ground station found on channel %u\n", ch);
+      return;
+    }
+  }
+  Serial.printf("[CAM-TX] GS not found on any channel — falling back to %d.\n",
+                CAM_FALLBACK_CHANNEL);
+  Serial.println("[CAM-TX] Check receiverMAC matches the GS boot print!");
+  esp_wifi_set_channel(CAM_FALLBACK_CHANNEL, WIFI_SECOND_CHAN_NONE);
+}
+
 // ================= INIT ESP-NOW =================
 void initEspNow()
 {
   WiFi.mode(WIFI_STA);
   WiFi.setSleep(false);
-  esp_wifi_set_channel(1, WIFI_SECOND_CHAN_NONE);
 
   if (esp_now_init() != ESP_OK)
   {
@@ -93,14 +155,18 @@ void initEspNow()
     return;
   }
 
+  esp_now_register_send_cb(onDataSent);
+
   memcpy(peerInfo.peer_addr, receiverMAC, 6);
-  peerInfo.channel = 1;
+  peerInfo.channel = 0; // 0 = always use the radio's current channel
   peerInfo.encrypt = false;
 
   if (esp_now_add_peer(&peerInfo) != ESP_OK)
   {
     Serial.println("ESP-NOW add_peer failed — check receiverMAC");
   }
+
+  findGroundStationChannel();
 }
 
 // ================= SEND FRAME =================
@@ -144,12 +210,28 @@ void sendFrame(camera_fb_t *fb)
 
   frame_id++;
 
+  // Link watchdog: if the GS stopped ACKing for ~25 frames (≈5 s), it may
+  // have rebooted onto another channel (router GS) — probe again.
+  static uint16_t failedFrames = 0;
+  if (sendStatusKnown && !sendOk)
+  {
+    if (++failedFrames >= 25)
+    {
+      failedFrames = 0;
+      findGroundStationChannel();
+    }
+  }
+  else if (sendOk)
+  {
+    failedFrames = 0;
+  }
+
   static uint32_t lastLog = 0;
   if (millis() - lastLog >= 3000)
   {
     lastLog = millis();
-    Serial.printf("[CAM-TX] frame %u | jpeg %u B | %u packets\n",
-                  frame_id - 1, fb->len, total);
+    Serial.printf("[CAM-TX] frame %u | jpeg %u B | %u packets | GS ack=%s\n",
+                  frame_id - 1, fb->len, total, sendOk ? "yes" : "NO");
   }
 }
 

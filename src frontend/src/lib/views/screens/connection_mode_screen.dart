@@ -49,6 +49,8 @@ class _ConnectionModeScreenState extends State<ConnectionModeScreen> {
         return AppColors.spanishSkyBlueColor;
       case ConnectionMode.directGroundStation:
         return AppColors.mediumSeaGreenColor;
+      case ConnectionMode.routerGroundStation:
+        return AppColors.contentColorCyan;
       case ConnectionMode.bleGroundStation:
         return AppColors.tropicalIndigoColor;
       case ConnectionMode.simulation:
@@ -62,6 +64,8 @@ class _ConnectionModeScreenState extends State<ConnectionModeScreen> {
         return Icons.cloud_outlined;
       case ConnectionMode.directGroundStation:
         return Icons.wifi;
+      case ConnectionMode.routerGroundStation:
+        return Icons.router_outlined;
       case ConnectionMode.bleGroundStation:
         return Icons.bluetooth;
       case ConnectionMode.simulation:
@@ -128,6 +132,8 @@ class _ConnectionModeScreenState extends State<ConnectionModeScreen> {
                             _buildModeCard(ConnectionMode.directGroundStation),
                             const SizedBox(height: 10),
                             _buildModeCard(ConnectionMode.broadcast),
+                            const SizedBox(height: 10),
+                            _buildModeCard(ConnectionMode.routerGroundStation),
                             const SizedBox(height: 10),
                             _buildModeCard(ConnectionMode.simulation),
                             const SizedBox(height: 14),

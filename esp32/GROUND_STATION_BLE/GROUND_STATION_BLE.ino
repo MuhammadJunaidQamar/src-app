@@ -1,15 +1,15 @@
 /*
- * CanSat Ground Station — BLE (NimBLE) + ESP-NOW
+ * CanSat Ground Station — Bluetooth (NimBLE) + ESP-NOW
  *
- * FLASH SIZE: Uses NimBLE (not the built-in "BLE" library). Install:
- *   Library Manager → "NimBLE-Arduino" by h2zero
+ * Use this sketch when the Flutter app mode is:
+ *   "Bluetooth ground station"
  *
- * If you still get "Sketch too big", set:
- *   Tools → Partition Scheme → "Huge APP (3MB No OTA)"
+ * Flash: esp32/GROUND_STATION_BLE/GROUND_STATION_BLE.ino
  *
- * Optional camera over BLE (adds flash/RAM): set GS_ENABLE_BLE_CAMERA to 1
- *
- * Pairing: 6-digit code on Serial — student enters in Flutter app.
+ * Requires NimBLE-Arduino (Library Manager → "NimBLE-Arduino" by h2zero).
+ * If sketch is too big: Tools → Partition Scheme → "Huge APP (3MB No OTA)".
+ * Pairing: 6-digit code on Serial Monitor (115200) — enter in the app.
+ * Serial also dumps ALL telemetry fields once per second when packets arrive.
  */
 
 #include <NimBLEDevice.h>
@@ -151,6 +151,26 @@ static char jsonBuf[640];
 
 size_t buildTelemetryJson(const struct_message &d, char *out, size_t outLen);
 
+// Flight CANSAT.ino uses the legacy packet (no roll/pitch/yaw). Derive them
+ // from accel + compass so the app is not stuck on zeros.
+static void ensureOrientationFromImu(struct_message &d)
+{
+  const bool unset =
+      (fabsf(d.roll) < 1e-6f && fabsf(d.pitch) < 1e-6f && fabsf(d.yaw) < 1e-6f);
+  if (!unset)
+    return;
+
+  const float ax = d.Xacc, ay = d.Yacc, az = d.Zacc;
+  const float denom = sqrtf(ay * ay + az * az);
+  if (denom > 1e-4f)
+  {
+    d.roll = atan2f(ay, az);          // radians
+    d.pitch = atan2f(-ax, denom);     // radians
+  }
+  // Compass heading is degrees (0–360). Flutter converts when |yaw| > 2π.
+  d.yaw = d.CompassHeading;
+}
+
 static void importLegacyTelemetry(const legacy_struct_message &leg)
 {
   myData.Header = leg.Header;
@@ -178,6 +198,30 @@ static void importLegacyTelemetry(const legacy_struct_message &leg)
   myData.yaw = 0.0f;
   myData.Distance = 0.0f;
   myData.TotalDistance = 0.0f;
+  ensureOrientationFromImu(myData);
+}
+
+// Human-readable dump so you can verify every field on the Serial Monitor.
+static void printTelemetrySerial(const struct_message &d, const char *source)
+{
+  Serial.println("---------- TELEMETRY ----------");
+  Serial.printf("source=%s  ts=%lu  header=%lu\n", source, d.timestamp, d.Header);
+  Serial.printf("ENV   temp=%.2f C  alt=%.2f m  press=%.1f Pa\n",
+                d.Temperature, d.Altitude, d.Pressure);
+  Serial.printf("ACC   ax=%.3f  ay=%.3f  az=%.3f\n", d.Xacc, d.Yacc, d.Zacc);
+  Serial.printf("GYRO  gx=%.3f  gy=%.3f  gz=%.3f\n",
+                d.Angaccx, d.Angaccy, d.Angaccz);
+  Serial.printf("MAG   mx=%.3f  my=%.3f  mz=%.3f  compass=%.1f deg\n",
+                d.Magx, d.Magy, d.Magz, d.CompassHeading);
+  Serial.printf("ORI   roll=%.4f rad  pitch=%.4f rad  yaw=%.2f (deg if |yaw|>2pi)\n",
+                d.roll, d.pitch, d.yaw);
+  Serial.printf("GPS   sat=%.0f  lat=%.6f  lon=%.6f  gpsAlt=%.2f  gpsHead=%.1f\n",
+                d.Sat, d.Lat, d.Long, d.GPSAlt, d.GPSHeading);
+  if (d.Sat < 1.0f || (fabsf(d.Lat) < 1e-6f && fabsf(d.Long) < 1e-6f))
+  {
+    Serial.println("GPS   NOTE: no fix yet (normal indoors — go outside / near window)");
+  }
+  Serial.println("--------------------------------");
 }
 
 // BLE notify ONLY from loop() — never from ESP-NOW or NimBLE callbacks (heap crash).
@@ -205,11 +249,12 @@ static void pushTelemetryBle()
   pTelemTx->notify();
   telemetryDirty = false;
 
-  if (now - lastTelemLogMs >= 3000)
+  if (now - lastTelemLogMs >= 2000)
   {
     lastTelemLogMs = now;
-    Serial.printf("[TELEM] BLE notify %u bytes temp=%.1f paired=%s\n",
-                  (unsigned)n, myData.Temperature, clientPaired ? "yes" : "no");
+    Serial.printf("[TELEM] BLE notify %u bytes | temp=%.1f roll=%.3f pitch=%.3f yaw=%.1f sat=%.0f lat=%.5f lon=%.5f\n",
+                  (unsigned)n, myData.Temperature, myData.roll, myData.pitch,
+                  myData.yaw, myData.Sat, myData.Lat, myData.Long);
   }
 }
 
@@ -318,7 +363,14 @@ void OnDataRecv(const esp_now_recv_info_t *info, const uint8_t *data, int len)
   if (len == sizeof(struct_message))
   {
     memcpy(&myData, data, sizeof(myData));
+    ensureOrientationFromImu(myData);
     telemetryDirty = true;
+    static uint32_t lastPrintMs = 0;
+    if (millis() - lastPrintMs >= 1000)
+    {
+      lastPrintMs = millis();
+      printTelemetrySerial(myData, "new-struct");
+    }
     return;
   }
 
@@ -328,6 +380,12 @@ void OnDataRecv(const esp_now_recv_info_t *info, const uint8_t *data, int len)
     memcpy(&leg, data, sizeof(leg));
     importLegacyTelemetry(leg);
     telemetryDirty = true;
+    static uint32_t lastLegacyPrintMs = 0;
+    if (millis() - lastLegacyPrintMs >= 1000)
+    {
+      lastLegacyPrintMs = millis();
+      printTelemetrySerial(myData, "legacy-CANSAT");
+    }
     return;
   }
 
@@ -548,7 +606,6 @@ void loop()
   if (millis() - lastHeartbeat >= 5000)
   {
     lastHeartbeat = millis();
-    NimBLEAdvertising *adv = NimBLEDevice::getAdvertising();
     Serial.printf(
         "[alive] heap=%u BLE=%s paired=%s telem=%s"
 #if GS_ENABLE_BLE_CAMERA
@@ -562,6 +619,21 @@ void loop()
         (unsigned long)camEspNowPackets, (unsigned long)camFramesForwarded
 #endif
     );
+#if GS_ENABLE_BLE_CAMERA
+    // Telemetry can work while camera is dead — they are separate ESP-NOW senders.
+    if (camEspNowPackets == 0 && millis() > 15000)
+    {
+      Serial.println(
+          "[CAM] No ESP-NOW camera packets yet. Check ESP32-CAM power + Serial,");
+      Serial.println(
+          "      and that Tx_camera receiverMAC matches this board's [BOOT] MAC.");
+    }
+    else if (camEspNowPackets > 0 && camFramesForwarded == 0 && clientPaired)
+    {
+      Serial.println(
+          "[CAM] ESP-NOW arriving but no BLE frames sent — JPEG assemble/corrupt?");
+    }
+#endif
   }
   ensureBleAdvertising();
   if (!deviceConnected && oldConnected)

@@ -62,7 +62,14 @@ class _GlobOnlyWidgetState extends State<GlobOnlyWidget>
   }
 
   void _applyTelemetry(Model model) {
-    if (model.roll != null && model.pitch != null && model.yaw != null) {
+    final hasOri =
+        model.roll != null && model.pitch != null && model.yaw != null;
+    final oriLooksEmpty = hasOri &&
+        model.roll!.abs() < 1e-6 &&
+        model.pitch!.abs() < 1e-6 &&
+        model.yaw!.abs() < 1e-6;
+
+    if (hasOri && !oriLooksEmpty) {
       _targetRoll = model.roll!;
       _targetPitch = model.pitch!;
       final rawYaw = model.yaw!;

@@ -4,10 +4,15 @@ import 'package:flutter/foundation.dart';
 /// Flash the matching ESP32 firmware before use — see [firmwareHint].
 enum ConnectionMode {
   /// Backend / relay WebSocket + optional remote MJPEG URL.
+  /// Flash GROUND_STATION_BROADCAST.ino on the ESP32 that feeds USB Serial.
   broadcast,
 
-  /// Phone joins ground-station Wi‑Fi AP — flash GROUND_STATION.ino.
+  /// Phone joins ground-station Wi‑Fi AP — flash GROUND_STATION_WIFI.ino.
   directGroundStation,
+
+  /// Ground station and phones join the same Wi‑Fi router; the app talks
+  /// straight to the station over the LAN — flash GROUND_STATION_ROUTER.ino.
+  routerGroundStation,
 
   /// Bluetooth — flash GROUND_STATION_BLE.ino.
   bleGroundStation,
@@ -30,6 +35,15 @@ class ConnectionConfig {
   ConnectionConfig._();
 
   static ConnectionMode? _selectedMode;
+
+  /// LAN IP of the ground station (router mode), from its Serial monitor.
+  static String _routerHost = '';
+
+  static String get routerHost => _routerHost;
+
+  static void setRouterHost(String host) {
+    _routerHost = host.trim();
+  }
 
   static const ConnectionEndpoints _broadcastEndpoints = ConnectionEndpoints(
     telemetryWsUrl: '',
@@ -91,6 +105,14 @@ class ConnectionConfig {
         );
       case ConnectionMode.directGroundStation:
         return _directEndpoints;
+      case ConnectionMode.routerGroundStation:
+        return ConnectionEndpoints(
+          telemetryWsUrl:
+              _routerHost.isEmpty ? '' : 'ws://$_routerHost:8765',
+          // The router GS relays ESP-NOW camera packets as MJPEG on port 81.
+          cameraStreamUrl:
+              _routerHost.isEmpty ? '' : 'http://$_routerHost:81/stream',
+        );
       case ConnectionMode.bleGroundStation:
         return _bleEndpoints;
       case ConnectionMode.simulation:
@@ -107,6 +129,8 @@ class ConnectionConfig {
         return 'Broadcast / server';
       case ConnectionMode.directGroundStation:
         return 'Wi‑Fi ground station';
+      case ConnectionMode.routerGroundStation:
+        return 'Router (LAN) ground station';
       case ConnectionMode.bleGroundStation:
         return 'Bluetooth ground station';
       case ConnectionMode.simulation:
@@ -117,9 +141,11 @@ class ConnectionConfig {
   static String modeSubtitle(ConnectionMode mode) {
     switch (mode) {
       case ConnectionMode.broadcast:
-        return 'WebSocket to your backend relay. Camera via configured stream URL.';
+        return 'WebSocket to your Python backend. Flash GROUND_STATION_BROADCAST.ino on the USB ground station.';
       case ConnectionMode.directGroundStation:
-        return 'Join AP "CanSat-GS", enter the 6-digit code from Serial. Flash GROUND_STATION.ino.';
+        return 'Join AP "CanSat-GS", enter the 6-digit code from Serial. Flash GROUND_STATION_WIFI.ino.';
+      case ConnectionMode.routerGroundStation:
+        return 'Station and phones join the same Wi‑Fi router. Enter only the 6-digit Serial code — the app finds your station on the LAN.';
       case ConnectionMode.bleGroundStation:
         return 'Pick your station in the list, enter the 6-digit Serial code. Flash GROUND_STATION_BLE.ino.';
       case ConnectionMode.simulation:
@@ -130,9 +156,11 @@ class ConnectionConfig {
   static String firmwareHint(ConnectionMode mode) {
     switch (mode) {
       case ConnectionMode.broadcast:
-        return 'No ESP32 GS firmware required for this app link.';
+        return 'Flash: esp32/GROUND_STATION_BROADCAST/GROUND_STATION_BROADCAST.ino → USB → Python relay';
       case ConnectionMode.directGroundStation:
-        return 'Flash: esp32/GROUND_STATION/GROUND_STATION.ino';
+        return 'Flash: esp32/GROUND_STATION_WIFI/GROUND_STATION_WIFI.ino';
+      case ConnectionMode.routerGroundStation:
+        return 'Flash: esp32/GROUND_STATION_ROUTER/GROUND_STATION_ROUTER.ino';
       case ConnectionMode.bleGroundStation:
         return 'Flash: esp32/GROUND_STATION_BLE/GROUND_STATION_BLE.ino';
       case ConnectionMode.simulation:
