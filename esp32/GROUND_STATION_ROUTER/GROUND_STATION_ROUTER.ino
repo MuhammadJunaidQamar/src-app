@@ -21,10 +21,9 @@
  *
  * IMPORTANT — ESP-NOW channel:
  *   ESP-NOW only receives on the Wi‑Fi channel this board is on, and the
- *   router decides that channel. CANSAT.ino transmits on channel 1 (its
- *   radio default). If Serial shows "channel: N" with N != 1, either set
- *   your router to channel 1 (2.4 GHz) or make the CanSat switch with
- *   esp_wifi_set_channel(N, WIFI_SECOND_CHAN_NONE) before esp_now_init().
+ *   router decides that channel. Current CANSAT.ino (and Tx_camera_code.ino)
+ *   probe channels 1–13 at boot and lock onto the channel where this station
+ *   ACKs — set broadcastAddress / receiverMAC to the MAC printed below.
  *
  * Flash: esp32/GROUND_STATION_ROUTER/GROUND_STATION_ROUTER.ino
  */
@@ -284,9 +283,8 @@ void printConnectionCard() {
                 WiFi.localIP().toString().c_str());
   Serial.printf("Wi-Fi channel: %d\n", WiFi.channel());
   if (WiFi.channel() != 1) {
-    Serial.println("NOTE: channel != 1. Tx_camera_code.ino auto-finds this");
-    Serial.println("channel, but CANSAT.ino transmits on channel 1 — set the");
-    Serial.println("router to channel 1 or esp_wifi_set_channel() in CANSAT.ino.");
+    Serial.println("NOTE: channel != 1. CANSAT.ino and Tx_camera_code.ino");
+    Serial.println("auto-probe channels 1–13 and lock onto this station.");
   }
   Serial.printf("PAIRING CODE: %s   <-- enter ONLY this in the app\n", pairCode);
   Serial.printf("Camera URL  : http://%s:%u/stream\n",

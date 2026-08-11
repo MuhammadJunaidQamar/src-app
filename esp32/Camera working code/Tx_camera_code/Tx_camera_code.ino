@@ -7,7 +7,7 @@
 //   BLE GS   : "[BOOT] MAC (use in Tx_camera receiverMAC): XX:XX:..."
 //   Router GS: "GS MAC      : XX:XX:..."  (STA MAC)
 //   Wi-Fi GS : "GS MAC (AP) : XX:XX:..."  (AP MAC — NOT the STA one)
-uint8_t receiverMAC[] = {0x28, 0x56, 0x2F, 0x4B, 0x57, 0x58};
+uint8_t receiverMAC[] = {0x28, 0x56, 0x2f, 0x49, 0xc0, 0xc8};
 
 // Fallback only. At boot the sender probes channels 1-13 and locks onto the
 // one where the ground station ACKs (needed for the Router GS, whose channel
@@ -103,6 +103,21 @@ void initCamera()
 // ================= CHANNEL PROBING =================
 // A unicast frame is ACKed at the MAC layer by the radio that owns
 // receiverMAC — so a successful delivery means "GS is on this channel".
+#define SEND_ACK_WAIT_MS 200
+#define LINK_REPROBE_MS  10000
+
+unsigned long lastChannelProbeMs = 0;
+unsigned long lastAckOkMs = 0;
+bool gsLinked = false;
+
+bool waitForSendStatus(uint32_t timeoutMs)
+{
+  uint32_t t0 = millis();
+  while (!sendStatusKnown && (millis() - t0) < timeoutMs)
+    delay(1);
+  return sendStatusKnown;
+}
+
 bool probeChannel(uint8_t ch)
 {
   esp_wifi_set_channel(ch, WIFI_SECOND_CHAN_NONE);
@@ -117,30 +132,49 @@ bool probeChannel(uint8_t ch)
       delay(10);
       continue;
     }
-    uint32_t t0 = millis();
-    while (!sendStatusKnown && millis() - t0 < 100)
-      delay(1);
+    waitForSendStatus(SEND_ACK_WAIT_MS);
     if (sendStatusKnown && sendOk)
       return true;
   }
   return false;
 }
 
-void findGroundStationChannel()
+bool findGroundStationChannel()
 {
+  lastChannelProbeMs = millis();
   Serial.println("[CAM-TX] searching for ground station channel...");
   for (uint8_t ch = 1; ch <= 13; ch++)
   {
     if (probeChannel(ch))
     {
+      gsLinked = true;
+      lastAckOkMs = millis();
       Serial.printf("[CAM-TX] ground station found on channel %u\n", ch);
-      return;
+      return true;
     }
   }
+  gsLinked = false;
   Serial.printf("[CAM-TX] GS not found on any channel — falling back to %d.\n",
                 CAM_FALLBACK_CHANNEL);
   Serial.println("[CAM-TX] Check receiverMAC matches the GS boot print!");
   esp_wifi_set_channel(CAM_FALLBACK_CHANNEL, WIFI_SECOND_CHAN_NONE);
+  return false;
+}
+
+bool findGroundStationChannelWithRetries(int maxRounds, uint32_t gapMs)
+{
+  for (int round = 1; round <= maxRounds; round++)
+  {
+    if (findGroundStationChannel())
+      return true;
+    if (round < maxRounds)
+    {
+      Serial.printf("[CAM-TX] GS not ready (try %d/%d) — waiting %lu ms\n",
+                    round, maxRounds, (unsigned long)gapMs);
+      delay(gapMs);
+    }
+  }
+  return false;
 }
 
 // ================= INIT ESP-NOW =================
@@ -166,7 +200,7 @@ void initEspNow()
     Serial.println("ESP-NOW add_peer failed — check receiverMAC");
   }
 
-  findGroundStationChannel();
+  findGroundStationChannelWithRetries(5, 2000);
 }
 
 // ================= SEND FRAME =================
@@ -208,22 +242,29 @@ void sendFrame(camera_fb_t *fb)
     delay(2);
   }
 
+  // Let the last packet's MAC ACK settle before judging the link.
+  waitForSendStatus(SEND_ACK_WAIT_MS);
+
   frame_id++;
 
-  // Link watchdog: if the GS stopped ACKing for ~25 frames (≈5 s), it may
-  // have rebooted onto another channel (router GS) — probe again.
-  static uint16_t failedFrames = 0;
-  if (sendStatusKnown && !sendOk)
+  if (sendStatusKnown && sendOk)
   {
-    if (++failedFrames >= 25)
-    {
-      failedFrames = 0;
-      findGroundStationChannel();
-    }
+    gsLinked = true;
+    lastAckOkMs = millis();
   }
-  else if (sendOk)
+  else if (!sendStatusKnown)
   {
-    failedFrames = 0;
+    sendOk = false;
+  }
+
+  // Time-based re-probe so a boot-before-GS race recovers without power cycle.
+  const uint32_t now = millis();
+  const bool linkStale = !gsLinked || lastAckOkMs == 0 ||
+                         (now - lastAckOkMs) >= LINK_REPROBE_MS;
+  if (linkStale && (now - lastChannelProbeMs) >= LINK_REPROBE_MS)
+  {
+    Serial.println("[CAM-TX] link down — re-probing channels...");
+    findGroundStationChannel();
   }
 
   static uint32_t lastLog = 0;

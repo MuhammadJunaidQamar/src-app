@@ -65,10 +65,20 @@ int fileIndex = 0; // counter for filenames
 bool sdCardAvailable = false; // Flag to track SD card status
 
 /*----------------------------------WIFI Starts-------------------------------------------*/
-uint8_t broadcastAddress[] = {0x28, 0x56, 0x2F, 0x77, 0x76, 0x30}; //28:56:2f:77:76:30
+// !! MUST match the MAC your ground station prints at boot:
+//   Router GS: "GS MAC      : XX:XX:..."  (STA MAC)
+//   Wi-Fi GS : "GS MAC (AP) : XX:XX:..."  (AP MAC — different from STA!)
+//   BLE GS   : "[BOOT] MAC ..."
+uint8_t broadcastAddress[] = {0x28, 0x56, 0x2f, 0x49, 0xc0, 0xc8}; //28:56:2f:49:c0:c8
 // uint8_t broadcastAddress[] = {0x6c, 0xc8, 0x40, 0x44, 0x94, 0xb8};  //gs1
 //uint8_t broadcastAddress[] = {0x44, 0x1D, 0x64, 0xFB, 0xD0, 0x0C};  //gs1
 //44:1d:64:f2:d2:e0
+
+// Fallback only. At boot we probe channels 1–13 and lock onto the one where
+// the ground station ACKs (needed for Router GS — its channel is decided by
+// the router, often not channel 1).
+#define CANSAT_FALLBACK_CHANNEL 1
+
 //struct for RF Data
 typedef struct struct_message {
   unsigned long Header;               
@@ -111,18 +121,110 @@ struct_message myData;
 IMU_reading_m imu_reading;
 esp_now_peer_info_t peerInfo;
 
+// MAC-layer ACK from the peer — used for channel probing + link watchdog.
+volatile bool sendStatusKnown = false;
+volatile bool sendOk = false;
+uint8_t lockedChannel = CANSAT_FALLBACK_CHANNEL;
+bool gsLinked = false;
+unsigned long lastAckOkMs = 0;
+unsigned long lastChannelProbeMs = 0;
 
-// callback when data is sent
-// void OnDataSent(const wifi_tx_info_t *tx_info, esp_now_send_status_t status) {       // On some platforms
-//   //Serial.print("\r\nLast Packet Send Status:\t");
-//   //Serial.println(status == ESP_NOW_SEND_SUCCESS ? "Delivery Success" : "Delivery Fail");
-// }
+// ESP-NOW fail ACKs can take >30 ms; wait long enough that timeouts count.
+#define SEND_ACK_WAIT_MS 200
+// Don't channel-hop too often — a full 1–13 scan blocks TX for seconds and
+// starves SoftAP / BLE GS on channel 1 when ACKs are flaky.
+#define LINK_REPROBE_MS  10000
 
-// void OnDataSent(const esp_now_send_info_t *tx_info, esp_now_send_status_t status) {   // On other platforms
-//   Serial.printf("Callback Successfully Called \n");
-// }
+void OnDataSent(const wifi_tx_info_t *tx_info, esp_now_send_status_t status) {
+  (void)tx_info;
+  sendOk = (status == ESP_NOW_SEND_SUCCESS);
+  sendStatusKnown = true;
+}
 
-wifi_interface_t current_wifi_interface;
+// Returns true if the send callback fired within timeoutMs.
+bool waitForSendStatus(uint32_t timeoutMs) {
+  uint32_t t0 = millis();
+  while (!sendStatusKnown && (millis() - t0) < timeoutMs) {
+    delay(1);
+  }
+  return sendStatusKnown;
+}
+
+// A unicast frame is ACKed by the radio that owns broadcastAddress —
+// success means "GS is on this channel".
+bool probeChannel(uint8_t ch) {
+  esp_wifi_set_channel(ch, WIFI_SECOND_CHAN_NONE);
+  delay(5);
+
+  for (int attempt = 0; attempt < 3; attempt++) {
+    sendStatusKnown = false;
+    uint8_t probe = 0xC5; // 1-byte; ground stations ignore unknown lengths
+    if (esp_now_send(broadcastAddress, &probe, 1) != ESP_OK) {
+      delay(10);
+      continue;
+    }
+    waitForSendStatus(SEND_ACK_WAIT_MS);
+    if (sendStatusKnown && sendOk) return true;
+  }
+  return false;
+}
+
+// Scan channels. Prefer last lock + ch 1 (Wi‑Fi SoftAP / BLE default) first
+// so SoftAP recovery is fast and we spend less time off-channel.
+bool findGroundStationChannel() {
+  lastChannelProbeMs = millis();
+  Serial.println("[CANSAT] searching for ground station channel...");
+
+  uint8_t order[13];
+  uint8_t n = 0;
+
+  // Build unique channel order: locked → 1 → 2..13
+  if (lockedChannel >= 1 && lockedChannel <= 13) {
+    order[n++] = lockedChannel;
+  }
+  if (lockedChannel != 1) {
+    order[n++] = 1;
+  }
+  for (uint8_t ch = 2; ch <= 13; ch++) {
+    if (ch == lockedChannel) continue;
+    order[n++] = ch;
+  }
+
+  for (uint8_t i = 0; i < n; i++) {
+    const uint8_t ch = order[i];
+    if (probeChannel(ch)) {
+      lockedChannel = ch;
+      gsLinked = true;
+      lastAckOkMs = millis();
+      Serial.printf("[CANSAT] ground station found on channel %u\n", ch);
+      return true;
+    }
+  }
+
+  // Stay on last known / ch 1 so SoftAP/BLE still hear packets between probes
+  // even when MAC ACKs are unreliable.
+  if (lockedChannel < 1 || lockedChannel > 13) lockedChannel = CANSAT_FALLBACK_CHANNEL;
+  gsLinked = false;
+  Serial.printf("[CANSAT] GS not found — TX stays on ch %u (will retry).\n",
+                (unsigned)lockedChannel);
+  Serial.println("[CANSAT] Check broadcastAddress matches the GS boot print!");
+  Serial.println("[CANSAT] Wi-Fi SoftAP GS → use GS MAC (AP), not STA.");
+  esp_wifi_set_channel(lockedChannel, WIFI_SECOND_CHAN_NONE);
+  return false;
+}
+
+// Boot / recovery: retry full scans until GS is up (or attempts exhausted).
+bool findGroundStationChannelWithRetries(int maxRounds, uint32_t gapMs) {
+  for (int round = 1; round <= maxRounds; round++) {
+    if (findGroundStationChannel()) return true;
+    if (round < maxRounds) {
+      Serial.printf("[CANSAT] GS not ready (try %d/%d) — waiting %lu ms\n",
+                    round, maxRounds, (unsigned long)gapMs);
+      delay(gapMs);
+    }
+  }
+  return false;
+}
 /*----------------------------------WIFI Ends-------------------------------------------*/
 
 /*--------------------------------SD CARD Functions-----------------------------------------*/
@@ -364,34 +466,38 @@ void setup() {
 
   
 
-  // Wifi configuration
+  // Wifi / ESP-NOW configuration
+  // Use standard 11b/g/n (NOT LR-only). Router / Wi‑Fi / BLE ground stations
+  // speak normal Wi‑Fi — LR-only TX never reaches them.
   WiFi.mode(WIFI_STA);
-  if (esp_wifi_set_protocol(current_wifi_interface, WIFI_PROTOCOL_LR) != ESP_OK) {
-    Serial.println("Error initializing WIFI LR");
-    return;
-  }
-  
+  WiFi.setSleep(false);
+  esp_wifi_set_protocol(WIFI_IF_STA,
+                        WIFI_PROTOCOL_11B | WIFI_PROTOCOL_11G | WIFI_PROTOCOL_11N);
   WiFi.setTxPower(WIFI_POWER_19_5dBm);
-  
-  // Init ESP-NOW
+
   if (esp_now_init() != ESP_OK) {
     Serial.println("Error initializing ESP-NOW");
     return;
   }
-  
-  // Once ESPNow is successfully Init, we will register for Send CB to get the status of Trasnmitted packet
-  // esp_now_register_send_cb(OnDataSent);
-  
-  // Register peer
+
+  esp_now_register_send_cb(OnDataSent);
+
+  // Register peer (channel 0 = follow the radio's current channel)
   memcpy(peerInfo.peer_addr, broadcastAddress, 6);
   peerInfo.channel = 0;
   peerInfo.encrypt = false;
-  
-  // Add peer
+
   if (esp_now_add_peer(&peerInfo) != ESP_OK) {
-    Serial.println("Failed to add peer");
+    Serial.println("Failed to add peer — check broadcastAddress MAC");
     return;
   }
+
+  // Probe channels 1–13 (retry — GS may still be joining the router).
+  findGroundStationChannelWithRetries(5, 2000);
+  Serial.printf("[CANSAT] peer MAC %02X:%02X:%02X:%02X:%02X:%02X | ch=%u | link=%s\n",
+                broadcastAddress[0], broadcastAddress[1], broadcastAddress[2],
+                broadcastAddress[3], broadcastAddress[4], broadcastAddress[5],
+                (unsigned)lockedChannel, gsLinked ? "OK" : "WAITING");
 
   // Buzzer configuration
   pinMode(4, OUTPUT);
@@ -554,22 +660,49 @@ void loop() {
   if( (toc - tic_send) >= T_send ){
     tic_send = toc;
     if(flag_Wifi_Comm == SET){                  // Send data over Wifi via ESP-NOW
+        // Re-probe every LINK_REPROBE_MS while the GS is missing or silent.
+        // Time-based (not fail-streak) so late/missing ACK callbacks still recover.
+        const bool linkStale = !gsLinked || lastAckOkMs == 0 ||
+                               (toc - lastAckOkMs) >= LINK_REPROBE_MS;
+        if (linkStale && (toc - lastChannelProbeMs) >= LINK_REPROBE_MS) {
+          Serial.println("[CANSAT] link down — re-probing channels...");
+          findGroundStationChannel();
+        }
+
+        sendStatusKnown = false;
         esp_err_t result = esp_now_send(broadcastAddress, (uint8_t *) &myData, sizeof(myData));
         toc_status_msg = millis();
         if (result == ESP_OK) {
-          sent_pkt_count++;
+          waitForSendStatus(SEND_ACK_WAIT_MS);
+          // Unknown/timeout counts as fail so the watchdog always advances.
+          const bool delivered = sendStatusKnown && sendOk;
+          if (delivered) {
+            sent_pkt_count++;
+            gsLinked = true;
+            lastAckOkMs = millis();
+          } else {
+            dropped_pkt_count++;
+            // If callback never fired, treat as fail for status print.
+            if (!sendStatusKnown) sendOk = false;
+          }
           if((toc_status_msg - tic_status_msg) > 1000){    // print every one second
-            Serial.print("Sent with success:        Packets Sent = "); Serial.print(sent_pkt_count); Serial.print(" -- Dropped = "); Serial.println(dropped_pkt_count);
+            Serial.print("ESP-NOW: Sent="); Serial.print(sent_pkt_count);
+            Serial.print(" Dropped="); Serial.print(dropped_pkt_count);
+            Serial.print(" ch="); Serial.print(lockedChannel);
+            Serial.print(" GS ack="); Serial.println(delivered ? "yes" : "NO");
             tic_status_msg = toc_status_msg;
           } 
         }else {
           dropped_pkt_count++;
+          if (!sendStatusKnown) sendOk = false;
           if((toc_status_msg - tic_status_msg) > 1000){
-            Serial.println("Error sending the data: Packets Sent = "); Serial.print(sent_pkt_count); Serial.print(" -- Dropped = "); Serial.println(dropped_pkt_count); 
+            Serial.print("Error queuing ESP-NOW: Sent="); Serial.print(sent_pkt_count);
+            Serial.print(" Dropped="); Serial.println(dropped_pkt_count); 
              tic_status_msg = toc_status_msg;
           }
         }
-        delay(DELAY_AFTER_WIRED_TX) ;
+
+        delay(DELAY_AFTER_WIFI_TX) ;
     }       
     else{                                   // Send Data Over UART
      if(flag_send_full_sensor_data == SET)

@@ -9,7 +9,8 @@
  *
  * CAMERA: this station also relays the ESP32-CAM video. Flash
  * "Camera working code/Tx_camera_code/Tx_camera_code.ino" with receiverMAC
- * set to THIS board's AP MAC (printed at boot). Received ESP-NOW frame
+ * set to THIS board's AP MAC (printed at boot — NOT the STA MAC). Same
+ * AP MAC goes in CANSAT.ino broadcastAddress. Received ESP-NOW frame
  * packets are reassembled and served as MJPEG at http://192.168.4.1:81/stream
  * (the app opens it automatically after pairing).
  *
@@ -323,7 +324,10 @@ void prepareWiFiRadio() {
   delay(100);
   WiFi.mode(WIFI_OFF);
   delay(100);
-  WiFi.mode(WIFI_AP);
+  // AP+STA is the reliable mode for SoftAP + ESP-NOW on ESP32.
+  // Pure WIFI_AP often fails to MAC-ACK unicast ESP-NOW, which breaks
+  // CanSat/camera channel probing (GS ack=NO forever).
+  WiFi.mode(WIFI_AP_STA);
   esp_wifi_set_ps(WIFI_PS_NONE);
   WiFi.setTxPower(WIFI_POWER_19_5dBm);
 }
@@ -349,12 +353,17 @@ bool startSoftAccessPoint() {
   IPAddress subnet(255, 255, 255, 0);
   WiFi.softAPConfig(apIp, gateway, subnet);
 
+  // Keep SoftAP on channel 1 even if the STA interface scans.
+  esp_wifi_set_channel(apChannel, WIFI_SECOND_CHAN_NONE);
   esp_wifi_set_protocol(WIFI_IF_AP,
+                        WIFI_PROTOCOL_11B | WIFI_PROTOCOL_11G | WIFI_PROTOCOL_11N);
+  esp_wifi_set_protocol(WIFI_IF_STA,
                         WIFI_PROTOCOL_11B | WIFI_PROTOCOL_11G | WIFI_PROTOCOL_11N);
 
   wifi_config_t wcfg = {};
   if (esp_wifi_get_config(WIFI_IF_AP, &wcfg) == ESP_OK) {
     wcfg.ap.ssid_hidden = 0;
+    wcfg.ap.channel = apChannel;
     esp_wifi_set_config(WIFI_IF_AP, &wcfg);
   }
 
@@ -363,10 +372,14 @@ bool startSoftAccessPoint() {
   Serial.println(AP_SSID);
   Serial.print("Soft AP IP: ");
   Serial.println(WiFi.softAPIP());
+  Serial.printf("Wi-Fi channel: %d\n", WiFi.channel());
   Serial.printf("Camera URL  : http://%s:%u/stream\n",
                 WiFi.softAPIP().toString().c_str(), (unsigned)CAM_HTTP_PORT);
-  Serial.printf("GS MAC (AP) : %s   <-- set as receiverMAC in Tx_camera_code.ino\n",
-                WiFi.softAPmacAddress().c_str());
+  Serial.printf("GS MAC (AP) : %s\n", WiFi.softAPmacAddress().c_str());
+  Serial.printf("             ^^^ set THIS in CANSAT broadcastAddress AND\n");
+  Serial.printf("                 Tx_camera_code receiverMAC (NOT the STA MAC)\n");
+  Serial.printf("GS MAC (STA): %s   (ignore for SoftAP mode)\n",
+                WiFi.macAddress().c_str());
   Serial.println("Join on 2.4 GHz, then enter pairing code from Serial.");
   Serial.println("==========================================");
   return true;
@@ -516,13 +529,14 @@ void loop() {
     for (int i = 0; i < CAM_MAX_CLIENTS; i++) {
       if (camClients[i] && camClients[i].connected()) camViewers++;
     }
-    Serial.printf("GS alive | AP %s | stations=%u | paired=%s | telem=%s | "
-                  "camFrames=%lu | camViewers=%d\n",
-                  WiFi.softAPIP().toString().c_str(),
-                  (unsigned)WiFi.softAPgetStationNum(),
-                  clientPaired ? "yes" : "no",
-                  hasTelemetry ? "yes" : "waiting",
-                  (unsigned long)camFrameSeq, camViewers);
+  Serial.printf("GS alive | AP %s | ch=%d | stations=%u | paired=%s | telem=%s | "
+                "camFrames=%lu | camViewers=%d\n",
+                WiFi.softAPIP().toString().c_str(),
+                WiFi.channel(),
+                (unsigned)WiFi.softAPgetStationNum(),
+                clientPaired ? "yes" : "no",
+                hasTelemetry ? "yes" : "waiting",
+                (unsigned long)camFrameSeq, camViewers);
   }
 
   delay(20);

@@ -20,7 +20,7 @@ Open Serial Monitor at **115200 baud**. Each sketch prints a pairing code (Wi‑
 - Edit `WIFI_SSID` / `WIFI_PASSWORD` at the top of `GROUND_STATION_ROUTER.ino`, then flash.
 - Serial prints the **pairing code** — enter only that in the app. The station broadcasts a UDP beacon (`CANSATGS|<ip>` on port 4210) so the phone finds it automatically. Manual IP is an optional fallback. Any number of phones/laptops on the same router can connect; other teams cannot without that station's code.
 - No MQTT broker or backend PC is needed — the station serves telemetry itself on `ws://<ip>:8765` (HTTP `/pair`, `/health`, `/telemetry` on port 80).
-- **Channel caveat:** ESP-NOW receives only on the router's 2.4 GHz channel. `CANSAT.ino` transmits on channel 1 by default, so set the router to channel 1 — or call `esp_wifi_set_channel(N, WIFI_SECOND_CHAN_NONE)` in `CANSAT.ino` to match the channel the ground station prints at boot. (The camera sender finds the channel automatically.)
+- **Channel:** ESP-NOW only works when CanSat and GS share a Wi‑Fi channel. The router decides the GS channel. Current `CANSAT.ino` and the camera sender probe channels 1–13 at boot (with retries), then re-probe every few seconds while the link is down — so powering CanSat before the GS still recovers automatically. Set `broadcastAddress` / `receiverMAC` to the GS MAC printed at boot. Serial shows `GS ack=yes/NO`.
 
 ## Camera (Wi‑Fi and Router modes)
 
