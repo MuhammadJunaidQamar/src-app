@@ -92,89 +92,51 @@ class _ConnectionModeScreenState extends State<ConnectionModeScreen> {
 
     return Scaffold(
       backgroundColor: colors.background,
-      body: Stack(
-        children: [
-          const Positioned.fill(
-            child: Align(
-              alignment: Alignment.topCenter,
-              child: Image(
-                image: AssetImage('assets/images/BackGround.png'),
-                fit: BoxFit.fitWidth,
-                alignment: Alignment.topCenter,
-                filterQuality: FilterQuality.high,
+      body: SafeArea(
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 860),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 20,
+                vertical: 12,
               ),
-            ),
-          ),
-          // Wash over the hero image. Dark theme sinks it into the page; light
-          // theme lifts it, otherwise dark body text would sit on a dark photo.
-          Positioned.fill(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: colors.isDark
-                      ? [
-                          AppColors.blackPearlColor.withValues(alpha: 0.86),
-                          colors.background.withValues(alpha: 0.9),
-                          colors.background,
-                        ]
-                      : [
-                          colors.background.withValues(alpha: 0.62),
-                          colors.background.withValues(alpha: 0.93),
-                          colors.background,
-                        ],
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                ),
-              ),
-            ),
-          ),
-          SafeArea(
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 860),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 12,
-                  ),
-                  // Header pinned to the top, Continue pinned to the bottom,
-                  // only the mode list between them scrolls. MainAxisSize.min
-                  // plus a loose Flexible means the column still shrink-wraps
-                  // and centres when everything fits — no stretched gap above
-                  // the button on a tall desktop window.
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      _buildHeader(context),
-                      const SizedBox(height: 12),
-                      Flexible(
-                        fit: FlexFit.loose,
-                        child: Scrollbar(
-                          controller: _listController,
-                          child: ListView.separated(
-                            controller: _listController,
-                            primary: false,
-                            shrinkWrap: true,
-                            padding: EdgeInsets.zero,
-                            itemCount: _modes.length,
-                            separatorBuilder: (_, __) =>
-                                const SizedBox(height: 10),
-                            itemBuilder: (context, i) =>
-                                _buildModeCard(_modes[i]),
-                          ),
-                        ),
+              // Header pinned to the top, Continue pinned to the bottom,
+              // only the mode list between them scrolls. MainAxisSize.min
+              // plus a loose Flexible means the column still shrink-wraps
+              // and centres when everything fits — no stretched gap above
+              // the button on a tall desktop window.
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _buildHeader(context),
+                  const SizedBox(height: 12),
+                  Flexible(
+                    fit: FlexFit.loose,
+                    child: Scrollbar(
+                      controller: _listController,
+                      child: ListView.separated(
+                        controller: _listController,
+                        primary: false,
+                        shrinkWrap: true,
+                        padding: EdgeInsets.zero,
+                        itemCount: _modes.length,
+                        separatorBuilder: (_, __) =>
+                            const SizedBox(height: 10),
+                        itemBuilder: (context, i) =>
+                            _buildModeCard(_modes[i]),
                       ),
-                      const SizedBox(height: 14),
-                      _buildContinueButton(),
-                    ],
+                    ),
                   ),
-                ),
+                  const SizedBox(height: 14),
+                  _buildContinueButton(),
+                ],
               ),
             ),
           ),
-        ],
+        ),
       ),
     );
   }

@@ -49,7 +49,7 @@ class ThemeWidget extends StatelessWidget {
                 : null,
             secondary: Icon(
               isDark ? Icons.wb_sunny_rounded : Icons.nightlight_round_sharp,
-              color: isDark ? colors.info : colors.warning,
+              color: isDark ? colors.warning : colors.info,
             ),
             contentPadding: EdgeInsets.zero,
           ),

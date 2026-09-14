@@ -29,6 +29,7 @@ void main() async {
   }
 
   await initializePlatformSpecificSettings();
+  await themeManager.loadSavedTheme();
 
   runApp(const MyApp());
 

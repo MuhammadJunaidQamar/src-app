@@ -610,7 +610,7 @@ class _SpatialObjectWidgetState extends State<SpatialObjectWidget>
       tj.addAnimationEvent((double dt) {
         final ddt = dt.clamp(0.001, 0.05);
 
-        // Slow star drift — replaces the static BackGround.png layer.
+        // Slow star drift for the night scene.
         final stars = _starfieldRoot;
         if (stars != null) {
           stars.rotation.y += ddt * 0.012;
