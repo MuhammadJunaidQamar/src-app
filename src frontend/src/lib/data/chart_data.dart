@@ -4,7 +4,6 @@ import 'package:src/widgets/charts/line_chart_widget2.dart';
 import 'package:src/widgets/charts/line_chart_widget3.dart';
 import 'package:src/widgets/charts/linet_widget.dart';
 import 'package:src/widgets/charts/sample5.dart';
-import 'package:src/widgets/charts/temperature_graph.dart';
 import 'package:src/model/chart_model.dart';
 import 'package:src/utils/constants/constants.dart';
 

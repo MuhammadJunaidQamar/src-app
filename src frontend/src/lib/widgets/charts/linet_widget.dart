@@ -4,7 +4,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:src/model/model.dart';
-import 'package:src/utils/constants/constants.dart';
+import 'package:src/theme/app_theme_colors.dart';
 import 'package:src/view_model/view_model.dart';
 
 class LineWidget extends StatefulWidget {
@@ -105,6 +105,7 @@ class _LineWidgetState extends State<LineWidget> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     var currentTime =
         DateTime.now().toLocal().toString().split(' ')[1].split('.')[0];
     return _spots.isNotEmpty
@@ -114,8 +115,8 @@ class _LineWidgetState extends State<LineWidget> {
               const SizedBox(height: 12),
               Text(
                 'time: $currentTime',
-                style: const TextStyle(
-                  color: AppColors.mainTextColor2,
+                style: TextStyle(
+                  color: colors.textSecondary,
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                 ),
@@ -123,7 +124,7 @@ class _LineWidgetState extends State<LineWidget> {
               Text(
                 '${widget.type}: ${_spots.last.y.toStringAsFixed(1)}${widget.unit}',
                 style: TextStyle(
-                  color: widget.lineColor,
+                  color: colors.tuneAccent(widget.lineColor),
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                 ),
@@ -141,9 +142,14 @@ class _LineWidgetState extends State<LineWidget> {
                       maxY: getMaxY(_spots),
                       lineTouchData: const LineTouchData(enabled: false),
                       clipData: const FlClipData.all(),
-                      gridData: const FlGridData(
+                      gridData: FlGridData(
                         show: true,
                         drawVerticalLine: false,
+                        getDrawingHorizontalLine: (value) => FlLine(
+                          color: colors.gridLine,
+                          strokeWidth: 0.4,
+                          dashArray: const [8, 4],
+                        ),
                       ),
                       borderData: FlBorderData(show: false),
                       lineBarsData: [

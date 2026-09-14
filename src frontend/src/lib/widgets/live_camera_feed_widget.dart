@@ -6,6 +6,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:mjpeg_stream/mjpeg_stream.dart';
+import 'package:src/theme/app_theme_colors.dart';
 import 'package:src/utils/connection/connection_config.dart';
 import 'package:src/utils/constants/constants.dart';
 import 'package:src/view_model/view_model.dart';
@@ -19,6 +20,11 @@ class LiveCameraFeedWidget extends StatefulWidget {
 }
 
 class _LiveCameraFeedWidgetState extends State<LiveCameraFeedWidget> {
+  /// Letterbox / pillar-box fill behind a live video frame. Camera output is
+  /// dark content, so this stays a dark neutral in both themes; the overlays
+  /// drawn on top of it use the scrim/onScrim roles for the same reason.
+  static const Color _feedLetterbox = Color(0xFF000000);
+
   final _vm = ViewModel();
   StreamSubscription<Uint8List>? _bleSub;
   Timer? _statsRefreshTimer;
@@ -116,23 +122,25 @@ class _LiveCameraFeedWidgetState extends State<LiveCameraFeedWidget> {
   }
 
   Widget _buildSimulationPlaceholder() {
+    final colors = context.colors;
+    // No video here — this is a plain panel, so it follows the theme surface.
     return ColoredBox(
-      color: Colors.black,
+      color: colors.surface,
       child: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
               Icons.science_outlined,
-              color: AppColors.deepSaffronColor.withValues(alpha: 0.7),
+              color: colors.warning.withValues(alpha: 0.7),
               size: 56,
             ),
             const SizedBox(height: 14),
-            const Text(
+            Text(
               'Camera not available in simulation mode.\n'
               'Telemetry and charts use demo data.',
               textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.white38, fontSize: 12),
+              style: TextStyle(color: colors.textTertiary, fontSize: 12),
             ),
           ],
         ),
@@ -141,19 +149,25 @@ class _LiveCameraFeedWidgetState extends State<LiveCameraFeedWidget> {
   }
 
   Widget _buildBleCamera() {
+    final colors = context.colors;
     final image = _decodedImage;
     if (image == null) {
       final noCamService = !_vm.bleCameraAvailable;
       final notifies = _vm.bleCameraNotifyCount;
       final frames = _vm.bleCameraFrameCount;
       final lastN = _vm.bleCameraLastNotifyBytes;
+      // No frame yet — this is a plain status panel, not a video surface.
       return ColoredBox(
-        color: Colors.black,
+        color: colors.surface,
         child: Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.videocam_off, color: Colors.white38, size: 56),
+              Icon(
+                Icons.videocam_off,
+                color: colors.textTertiary,
+                size: 56,
+              ),
               const SizedBox(height: 14),
               Text(
                 noCamService
@@ -164,7 +178,7 @@ class _LiveCameraFeedWidgetState extends State<LiveCameraFeedWidget> {
                         'Same GS firmware as Android (no re-flash needed).\n'
                         'If telemetry works, check camera tab after pairing.',
                 textAlign: TextAlign.center,
-                style: const TextStyle(color: Colors.white38, fontSize: 12),
+                style: TextStyle(color: colors.textTertiary, fontSize: 12),
               ),
               if (!noCamService) ...[
                 const SizedBox(height: 10),
@@ -172,7 +186,7 @@ class _LiveCameraFeedWidgetState extends State<LiveCameraFeedWidget> {
                   'BLE: notify=${_vm.bleCameraNotifying} · packets $notifies · '
                   'reads ${_vm.camReadAttempts} · frames $frames · last $lastN B',
                   textAlign: TextAlign.center,
-                  style: const TextStyle(color: Colors.white24, fontSize: 11),
+                  style: TextStyle(color: colors.textMuted, fontSize: 11),
                 ),
                 if (notifies > 0 && frames == 0)
                   Padding(
@@ -181,7 +195,7 @@ class _LiveCameraFeedWidgetState extends State<LiveCameraFeedWidget> {
                       'Packets OK (${_vm.camChunksReceived} chunks) but no JPEG yet —\n'
                       'rebuild app (packet parser fix).',
                       textAlign: TextAlign.center,
-                      style: const TextStyle(color: Colors.amber, fontSize: 11),
+                      style: TextStyle(color: colors.warning, fontSize: 11),
                     ),
                   ),
               ],
@@ -198,7 +212,7 @@ class _LiveCameraFeedWidgetState extends State<LiveCameraFeedWidget> {
         : 1.0;
 
     return ColoredBox(
-      color: Colors.black,
+      color: _feedLetterbox,
       child: Stack(
         fit: StackFit.expand,
         children: [
@@ -220,7 +234,9 @@ class _LiveCameraFeedWidgetState extends State<LiveCameraFeedWidget> {
               child: Text(
                 _statusHint!,
                 textAlign: TextAlign.center,
-                style: const TextStyle(color: Colors.amber, fontSize: 11),
+                // Sits on the dark video surface; warning reads on it in both
+                // themes.
+                style: TextStyle(color: colors.warning, fontSize: 11),
               ),
             ),
           Positioned(
@@ -229,13 +245,13 @@ class _LiveCameraFeedWidgetState extends State<LiveCameraFeedWidget> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
-                color: Colors.black54,
+                color: colors.scrim,
                 borderRadius: BorderRadius.circular(6),
               ),
               child: Text(
                 'BLE · #$_frameCount · ${_lastJpegBytes} B · '
                 '${_imageWidth}×$_imageHeight',
-                style: const TextStyle(color: Colors.white70, fontSize: 11),
+                style: TextStyle(color: colors.onScrim, fontSize: 11),
               ),
             ),
           ),
@@ -249,10 +265,10 @@ class _LiveCameraFeedWidgetState extends State<LiveCameraFeedWidget> {
     final w = MediaQuery.of(context).size.width;
 
     if (url.isEmpty) {
-      return const Center(
+      return Center(
         child: Text(
           'No camera URL for this connection mode.',
-          style: TextStyle(color: Colors.white38),
+          style: TextStyle(color: context.colors.textTertiary),
         ),
       );
     }

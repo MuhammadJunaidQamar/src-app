@@ -1,5 +1,5 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:src/theme/app_theme_colors.dart';
 import 'package:src/utils/connection/connection_config.dart';
 import 'package:src/utils/constants/constants.dart';
 import 'package:src/utils/desktop_interaction.dart';
@@ -17,11 +17,18 @@ class ConnectionModeScreen extends StatefulWidget {
 
 class _ConnectionModeScreenState extends State<ConnectionModeScreen> {
   ConnectionMode? _selectedMode;
+  final _listController = ScrollController();
 
   @override
   void initState() {
     super.initState();
     _selectedMode = ConnectionConfig.selectedMode;
+  }
+
+  @override
+  void dispose() {
+    _listController.dispose();
+    super.dispose();
   }
 
   void _onContinue() {
@@ -43,19 +50,17 @@ class _ConnectionModeScreenState extends State<ConnectionModeScreen> {
     Navigator.of(context).pushNamed(RouteName.groundStationPairingScreen);
   }
 
-  Color _accentForMode(ConnectionMode mode) {
-    switch (mode) {
-      case ConnectionMode.broadcast:
-        return AppColors.spanishSkyBlueColor;
-      case ConnectionMode.directGroundStation:
-        return AppColors.mediumSeaGreenColor;
-      case ConnectionMode.routerGroundStation:
-        return AppColors.contentColorCyan;
-      case ConnectionMode.bleGroundStation:
-        return AppColors.tropicalIndigoColor;
-      case ConnectionMode.simulation:
-        return AppColors.deepSaffronColor;
-    }
+  /// Brand hue per mode, darkened on light surfaces so it still carries white
+  /// text and reads as a label rather than a highlighter stroke.
+  Color _accentForMode(BuildContext context, ConnectionMode mode) {
+    final raw = switch (mode) {
+      ConnectionMode.broadcast => AppColors.spanishSkyBlueColor,
+      ConnectionMode.directGroundStation => AppColors.mediumSeaGreenColor,
+      ConnectionMode.routerGroundStation => AppColors.contentColorCyan,
+      ConnectionMode.bleGroundStation => AppColors.tropicalIndigoColor,
+      ConnectionMode.simulation => AppColors.deepSaffronColor,
+    };
+    return context.colors.tuneAccent(raw);
   }
 
   IconData _iconForMode(ConnectionMode mode) {
@@ -73,10 +78,20 @@ class _ConnectionModeScreenState extends State<ConnectionModeScreen> {
     }
   }
 
+  static const _modes = [
+    ConnectionMode.bleGroundStation,
+    ConnectionMode.directGroundStation,
+    ConnectionMode.broadcast,
+    ConnectionMode.routerGroundStation,
+    ConnectionMode.simulation,
+  ];
+
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
+
     return Scaffold(
-      backgroundColor: AppColors.backgroundColor,
+      backgroundColor: colors.background,
       body: Stack(
         children: [
           const Positioned.fill(
@@ -90,15 +105,23 @@ class _ConnectionModeScreenState extends State<ConnectionModeScreen> {
               ),
             ),
           ),
+          // Wash over the hero image. Dark theme sinks it into the page; light
+          // theme lifts it, otherwise dark body text would sit on a dark photo.
           Positioned.fill(
             child: DecoratedBox(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [
-                    AppColors.blackPearlColor.withValues(alpha: 0.86),
-                    AppColors.backgroundColor.withValues(alpha: 0.9),
-                    AppColors.backgroundColor,
-                  ],
+                  colors: colors.isDark
+                      ? [
+                          AppColors.blackPearlColor.withValues(alpha: 0.86),
+                          colors.background.withValues(alpha: 0.9),
+                          colors.background,
+                        ]
+                      : [
+                          colors.background.withValues(alpha: 0.62),
+                          colors.background.withValues(alpha: 0.93),
+                          colors.background,
+                        ],
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                 ),
@@ -106,45 +129,49 @@ class _ConnectionModeScreenState extends State<ConnectionModeScreen> {
             ),
           ),
           SafeArea(
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                return SingleChildScrollView(
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 860),
+                child: Padding(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 20,
                     vertical: 12,
                   ),
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(
-                      minHeight: constraints.maxHeight - 24,
-                    ),
-                    child: Center(
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 860),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            _buildHeader(context),
-                            const SizedBox(height: 12),
-                            _buildModeCard(ConnectionMode.bleGroundStation),
-                            const SizedBox(height: 10),
-                            _buildModeCard(ConnectionMode.directGroundStation),
-                            const SizedBox(height: 10),
-                            _buildModeCard(ConnectionMode.broadcast),
-                            const SizedBox(height: 10),
-                            _buildModeCard(ConnectionMode.routerGroundStation),
-                            const SizedBox(height: 10),
-                            _buildModeCard(ConnectionMode.simulation),
-                            const SizedBox(height: 14),
-                            _buildContinueButton(),
-                          ],
+                  // Header pinned to the top, Continue pinned to the bottom,
+                  // only the mode list between them scrolls. MainAxisSize.min
+                  // plus a loose Flexible means the column still shrink-wraps
+                  // and centres when everything fits — no stretched gap above
+                  // the button on a tall desktop window.
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _buildHeader(context),
+                      const SizedBox(height: 12),
+                      Flexible(
+                        fit: FlexFit.loose,
+                        child: Scrollbar(
+                          controller: _listController,
+                          child: ListView.separated(
+                            controller: _listController,
+                            primary: false,
+                            shrinkWrap: true,
+                            padding: EdgeInsets.zero,
+                            itemCount: _modes.length,
+                            separatorBuilder: (_, __) =>
+                                const SizedBox(height: 10),
+                            itemBuilder: (context, i) =>
+                                _buildModeCard(_modes[i]),
+                          ),
                         ),
                       ),
-                    ),
+                      const SizedBox(height: 14),
+                      _buildContinueButton(),
+                    ],
                   ),
-                );
-              },
+                ),
+              ),
             ),
           ),
         ],
@@ -153,8 +180,11 @@ class _ConnectionModeScreenState extends State<ConnectionModeScreen> {
   }
 
   Widget _buildHeader(BuildContext context) {
+    final colors = context.colors;
     return CustomCard(
-      color: AppColors.blackPearlColor.withValues(alpha: 0.82),
+      color: colors.isDark
+          ? AppColors.blackPearlColor.withValues(alpha: 0.82)
+          : colors.surface.withValues(alpha: 0.92),
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
       margin: EdgeInsets.zero,
       expandChild: true,
@@ -164,7 +194,7 @@ class _ConnectionModeScreenState extends State<ConnectionModeScreen> {
           Text(
             AppText.appName,
             style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                  color: AppColors.contentColorWhite,
+                  color: colors.textStrong,
                   fontWeight: FontWeight.w700,
                 ),
           ),
@@ -172,7 +202,7 @@ class _ConnectionModeScreenState extends State<ConnectionModeScreen> {
           Text(
             'Choose how to connect. Flash the ESP32 with the matching ground-station sketch, then continue.',
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  color: AppColors.mainTextColor2,
+                  color: colors.textSecondary,
                 ),
           ),
         ],
@@ -183,7 +213,7 @@ class _ConnectionModeScreenState extends State<ConnectionModeScreen> {
   Widget _buildModeCard(ConnectionMode mode) {
     final supported = ConnectionConfig.isModeSupportedOnPlatform(mode);
     final selected = _selectedMode == mode;
-    final accent = _accentForMode(mode);
+    final accent = _accentForMode(context, mode);
 
     return _ModeCard(
       title: ConnectionConfig.modeTitle(mode),
@@ -200,11 +230,12 @@ class _ConnectionModeScreenState extends State<ConnectionModeScreen> {
   }
 
   Widget _buildContinueButton() {
+    final colors = context.colors;
     final canContinue = _selectedMode != null &&
         ConnectionConfig.isModeSupportedOnPlatform(_selectedMode!);
     final accent = _selectedMode != null
-        ? _accentForMode(_selectedMode!)
-        : AppColors.squidInkColor;
+        ? _accentForMode(context, _selectedMode!)
+        : colors.disabledSurface;
 
     return SizedBox(
       height: 46,
@@ -212,14 +243,15 @@ class _ConnectionModeScreenState extends State<ConnectionModeScreen> {
         onPressed: canContinue ? _onContinue : null,
         style: ElevatedButton.styleFrom(
           backgroundColor: accent,
-          foregroundColor: Colors.white,
-          disabledBackgroundColor: AppColors.squidInkColor,
+          foregroundColor: colors.onAccent,
+          disabledBackgroundColor: colors.disabledSurface,
+          disabledForegroundColor: colors.textTertiary,
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         ),
         child: const Text(
           'Continue',
-          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
         ),
       ),
     );
@@ -251,6 +283,8 @@ class _ModeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
+
     return Material(
       color: Colors.transparent,
       borderRadius: BorderRadius.circular(20),
@@ -266,10 +300,12 @@ class _ModeCard extends StatelessWidget {
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(20),
               color: selected
-                  ? AppColors.blackPearlColor.withValues(alpha: 0.95)
-                  : AppColors.itemsBackground.withValues(alpha: 0.72),
+                  ? (colors.isDark
+                      ? AppColors.blackPearlColor.withValues(alpha: 0.95)
+                      : colors.surface)
+                  : colors.surfaceMuted.withValues(alpha: 0.72),
               border: Border.all(
-                color: selected ? accentColor : AppColors.borderColor,
+                color: selected ? accentColor : colors.cardBorder,
                 width: selected ? 1.6 : 1,
               ),
             ),
@@ -282,13 +318,13 @@ class _ModeCard extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: selected
                         ? accentColor.withValues(alpha: 0.18)
-                        : AppColors.squidInkColor.withValues(alpha: 0.5),
+                        : colors.surfaceStrong.withValues(alpha: 0.5),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(
                     icon,
                     size: 24,
-                    color: selected ? accentColor : AppColors.mainTextColor2,
+                    color: selected ? accentColor : colors.textSecondary,
                   ),
                 ),
                 const SizedBox(width: 14),
@@ -300,8 +336,8 @@ class _ModeCard extends StatelessWidget {
                         title,
                         style: TextStyle(
                           color: selected
-                              ? AppColors.contentColorWhite
-                              : AppColors.mainTextColor2,
+                              ? colors.textStrong
+                              : colors.textSecondary,
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
                         ),
@@ -309,8 +345,8 @@ class _ModeCard extends StatelessWidget {
                       const SizedBox(height: 6),
                       Text(
                         subtitle,
-                        style: const TextStyle(
-                          color: AppColors.mainTextColor3,
+                        style: TextStyle(
+                          color: colors.textTertiary,
                           fontSize: 12,
                           height: 1.35,
                         ),
@@ -328,8 +364,8 @@ class _ModeCard extends StatelessWidget {
                         const SizedBox(height: 6),
                         Text(
                           disabledReason!,
-                          style: const TextStyle(
-                            color: Colors.orangeAccent,
+                          style: TextStyle(
+                            color: colors.warning,
                             fontSize: 11,
                           ),
                         ),

@@ -4,6 +4,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:src/model/model.dart';
+import 'package:src/theme/app_theme_colors.dart';
 import 'package:src/utils/constants/constants.dart';
 import 'package:src/view_model/view_model.dart';
 
@@ -15,25 +16,48 @@ class _LineChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
+    // Captured here so the fl_chart closures below never need a BuildContext.
+    final axisLabelColor = colors.textSecondary;
+    final gridLineColor = colors.gridLine;
+
     return LineChart(
       LineChartData(
-        lineTouchData: LineTouchData(handleBuiltInTouches: true),
-        gridData: const FlGridData(show: true),
+        lineTouchData: LineTouchData(
+          handleBuiltInTouches: true,
+          touchTooltipData: LineTouchTooltipData(
+            getTooltipColor: (touchedSpot) => colors.surfaceElevated,
+            tooltipBorder: BorderSide(color: colors.cardBorder),
+          ),
+        ),
+        gridData: FlGridData(
+          show: true,
+          getDrawingHorizontalLine: (value) => FlLine(
+            color: gridLineColor,
+            strokeWidth: 0.4,
+            dashArray: const [8, 4],
+          ),
+          getDrawingVerticalLine: (value) => FlLine(
+            color: gridLineColor,
+            strokeWidth: 0.4,
+            dashArray: const [8, 4],
+          ),
+        ),
         titlesData: FlTitlesData(
-          bottomTitles: AxisTitles(sideTitles: bottomTitles),
-          leftTitles: AxisTitles(sideTitles: leftTitles()),
+          bottomTitles: AxisTitles(sideTitles: bottomTitles(axisLabelColor)),
+          leftTitles: AxisTitles(sideTitles: leftTitles(axisLabelColor)),
         ),
         borderData: FlBorderData(
           show: true,
           border: Border.all(
-            color: AppColors.primary.withOpacity(0.2),
+            color: colors.cardBorder,
             width: 4,
           ),
         ),
         lineBarsData: [
           LineChartBarData(
             isCurved: true,
-            color: AppColors.contentColorGreen,
+            color: colors.tuneAccent(AppColors.contentColorGreen),
             barWidth: 4,
             isStrokeCapRound: true,
             dotData: const FlDotData(show: false),
@@ -49,42 +73,47 @@ class _LineChart extends StatelessWidget {
     );
   }
 
-  static SideTitles get bottomTitles => SideTitles(
+  static SideTitles bottomTitles(Color labelColor) => SideTitles(
         showTitles: true,
         reservedSize: 32,
         interval: 1,
         getTitlesWidget: (double value, TitleMeta meta) {
-          const style = TextStyle(
+          final style = TextStyle(
+            color: labelColor,
             fontWeight: FontWeight.bold,
             fontSize: 16,
           );
           switch (value.toInt()) {
             case 2:
-              return const Text('SEPT', style: style);
+              return Text('SEPT', style: style);
             case 7:
-              return const Text('OCT', style: style);
+              return Text('OCT', style: style);
             case 12:
-              return const Text('DEC', style: style);
+              return Text('DEC', style: style);
             default:
               return const Text('');
           }
         },
       );
 
-  static SideTitles leftTitles() => SideTitles(
+  static SideTitles leftTitles(Color labelColor) => SideTitles(
         showTitles: true,
         reservedSize: 40,
         getTitlesWidget: (double value, TitleMeta meta) {
-          const style = TextStyle(fontWeight: FontWeight.bold, fontSize: 14);
+          final style = TextStyle(
+            color: labelColor,
+            fontWeight: FontWeight.bold,
+            fontSize: 14,
+          );
           switch (value.toInt()) {
             case 1:
-              return const Text('1m', style: style);
+              return Text('1m', style: style);
             case 2:
-              return const Text('2m', style: style);
+              return Text('2m', style: style);
             case 3:
-              return const Text('3m', style: style);
+              return Text('3m', style: style);
             case 4:
-              return const Text('5m', style: style);
+              return Text('5m', style: style);
             default:
               return const Text('');
           }
@@ -192,7 +221,7 @@ class LineChart3State extends State<LineChart3> {
               Text(
                 widget.type,
                 style: TextStyle(
-                  color: AppColors.primary,
+                  color: context.colors.info,
                   fontSize: 32,
                   fontWeight: FontWeight.bold,
                   letterSpacing: 2,

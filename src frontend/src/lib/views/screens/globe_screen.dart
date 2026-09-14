@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:src/theme/app_theme_colors.dart';
 import 'package:three_js/three_js.dart' as three;
 
 /// Standalone page: only globe.glb, one ThreeJS instance, nothing else.
@@ -17,15 +18,28 @@ class GlobeScreen extends StatefulWidget {
 class _GlobeScreenState extends State<GlobeScreen> {
   static const _asset = 'assets/3d object/globe.glb';
 
+  /// Scene clear colours. The renderer wants a raw hex int, so the two theme
+  /// canvases are mirrored here rather than read off [AppThemeColors].
+  static const int _sceneBgDark = 0x0d1520;
+  static const int _sceneBgLight = 0xeef2f8;
+
   three.ThreeJS? _js;
   three.Object3D? _root;
   Size? _size;
+
+  /// Brightness the current scene was built and lit for. Set from [build]
+  /// only — never from initState.
+  bool _sceneIsDark = true;
   String _status = 'Initialising…';
   bool _idleSpin = true;
   bool _dragging = false;
   Timer? _spinTimer;
 
-  void _brighten(three.Object3D obj) {
+  void _brighten(three.Object3D obj, {required bool isDark}) {
+    // The emissive lift exists so the globe does not sink into a dark canvas;
+    // on the daylight canvas the light rig already carries it.
+    final standardEmissive = isDark ? 0x223344 : 0x0a0f14;
+    final physicalEmissive = isDark ? 0x1a2a3a : 0x080d12;
     obj.traverse((child) {
       if (child is! three.Mesh) return;
       final m = child.material;
@@ -34,11 +48,11 @@ class _GlobeScreenState extends State<GlobeScreen> {
       for (final mat in list) {
         try {
           if (mat is three.MeshStandardMaterial) {
-            mat.emissive = three.Color.fromHex32(0x223344);
+            mat.emissive = three.Color.fromHex32(standardEmissive);
             mat.metalness = (mat.metalness * 0.5).clamp(0.0, 1.0);
             mat.roughness = (mat.roughness * 0.85 + 0.15).clamp(0.0, 1.0);
           } else if (mat is three.MeshPhysicalMaterial) {
-            mat.emissive = three.Color.fromHex32(0x1a2a3a);
+            mat.emissive = three.Color.fromHex32(physicalEmissive);
           }
         } catch (_) {}
       }
@@ -59,12 +73,23 @@ class _GlobeScreenState extends State<GlobeScreen> {
     tj.camera.lookAt(three.Vector3(0, 0, 0));
 
     tj.scene = three.Scene();
-    tj.scene.background = three.Color.fromHex32(0x0d1520);
-    tj.scene.add(three.HemisphereLight(0xb8d0ff, 0x1a2233, 1.0));
-    tj.scene.add(three.AmbientLight(0xffffff, 0.7));
-    tj.scene.add(
-      three.DirectionalLight(0xffffff, 1.4)..position.setValues(5, 8, 5),
-    );
+    tj.scene.background =
+        three.Color.fromHex32(_sceneIsDark ? _sceneBgDark : _sceneBgLight);
+    if (_sceneIsDark) {
+      tj.scene.add(three.HemisphereLight(0xb8d0ff, 0x1a2233, 1.0));
+      tj.scene.add(three.AmbientLight(0xffffff, 0.7));
+      tj.scene.add(
+        three.DirectionalLight(0xffffff, 1.4)..position.setValues(5, 8, 5),
+      );
+    } else {
+      // Daylight rig: warm key light and a bright ground bounce so the globe
+      // keeps its form against the light canvas.
+      tj.scene.add(three.HemisphereLight(0xffffff, 0xd4dced, 1.25));
+      tj.scene.add(three.AmbientLight(0xffffff, 0.95));
+      tj.scene.add(
+        three.DirectionalLight(0xfff2de, 1.6)..position.setValues(5, 8, 5),
+      );
+    }
 
     // Always-visible placeholder so we know the engine works
     final placeholder = three.Mesh(
@@ -87,7 +112,7 @@ class _GlobeScreenState extends State<GlobeScreen> {
       }
 
       final model = gltf.scene;
-      _brighten(model);
+      _brighten(model, isDark: _sceneIsDark);
 
       // centre + normalise to radius ~1.5
       final box = three.BoundingBox()..setFromObject(model);
@@ -127,13 +152,15 @@ class _GlobeScreenState extends State<GlobeScreen> {
     });
   }
 
-  void _build3D(Size size) {
+  void _build3D(Size size, bool isDark) {
     if (_size != null &&
+        _sceneIsDark == isDark &&
         (size.width - _size!.width).abs() < 20 &&
         (size.height - _size!.height).abs() < 20) {
       return;
     }
     _size = size;
+    _sceneIsDark = isDark;
     _js?.dispose();
     _root = null;
 
@@ -142,7 +169,7 @@ class _GlobeScreenState extends State<GlobeScreen> {
       renderNumber: 0,
       settings: three.Settings(
         antialias: true,
-        clearColor: 0x0d1520,
+        clearColor: isDark ? _sceneBgDark : _sceneBgLight,
         clearAlpha: 1.0,
       ),
       onSetupComplete: () {
@@ -182,20 +209,25 @@ class _GlobeScreenState extends State<GlobeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Read the theme here (never in initState) so a brightness flip rebuilds
+    // the page and, through _build3D, relights the scene.
+    final colors = context.colors;
+    final isDark = colors.isDark;
+
     return Scaffold(
-      backgroundColor: const Color(0xFF0d1520),
+      backgroundColor: colors.background,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF0a0f1a),
+        backgroundColor: colors.menuBackground,
         title: Text(
           'Globe  ·  $_status',
-          style: const TextStyle(fontSize: 14, color: Colors.white70),
+          style: TextStyle(fontSize: 14, color: colors.textSecondary),
         ),
-        iconTheme: const IconThemeData(color: Colors.white70),
+        iconTheme: IconThemeData(color: colors.textSecondary),
       ),
       body: LayoutBuilder(
         builder: (_, con) {
           final size = Size(con.maxWidth, con.maxHeight);
-          if (size.width > 16 && size.height > 16) _build3D(size);
+          if (size.width > 16 && size.height > 16) _build3D(size, isDark);
           final js = _js;
           return GestureDetector(
             onPanStart: _panStart,

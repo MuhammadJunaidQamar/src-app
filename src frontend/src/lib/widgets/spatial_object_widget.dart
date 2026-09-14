@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:src/model/model.dart';
+import 'package:src/theme/app_theme_colors.dart';
 import 'package:src/view_model/view_model.dart';
 import 'package:three_js/three_js.dart' as three;
 
@@ -49,6 +50,11 @@ class _SpatialObjectWidgetState extends State<SpatialObjectWidget>
   double _dpr = 1.0;
   bool _sceneReady = false;
   int _setupGen = 0;
+
+  /// Brightness the live scene was built for. The whole scene — sky, lights,
+  /// starfield vs sun — is baked at setup time, so a theme flip has to rebuild
+  /// the viewer the same way a resize does.
+  bool _sceneIsDark = true;
 
   double _targetRoll = 0, _targetPitch = 0, _targetYaw = 0;
   String? _error;
@@ -280,6 +286,148 @@ class _SpatialObjectWidgetState extends State<SpatialObjectWidget>
     return field;
   }
 
+  // ── Daytime sky (light theme) ───────────────────────────────────────────────
+  // The night scene is a flat dark clear colour + starfield. Light theme swaps
+  // both for a gradient sky dome and a sun parked in the upper-left corner.
+  three.DataTexture? _sunSprite;
+
+  /// Flat fallback behind the dome, so a dome that ever fails to draw still
+  /// leaves blue sky rather than a black void.
+  static const int _kSkyClear = 0x5E97D0;
+  static const int _kSkyZenith = 0x2B6CB8; // saturated blue overhead
+  static const int _kSkyHorizon = 0xD3E7F6; // pale haze down at the horizon
+
+  /// Sun placement, in world units. Derived from the fixed camera — eye at
+  /// (0, 3, 9) looking at (0, -1, 0) — as 16° left of and 26° above the view
+  /// axis at 60 units out. That parks it in the upper-left corner, well clear
+  /// of the craft (which sits ~15° above the axis, dead centre), so its glow
+  /// never washes over the thing the screen exists to show.
+  static const double _kSunX = -17.2;
+  static const double _kSunY = 5.4;
+  static const double _kSunZ = -57.7;
+
+  static ({double r, double g, double b}) _rgbOf(int hex) => (
+        r: ((hex >> 16) & 0xFF) / 255.0,
+        g: ((hex >> 8) & 0xFF) / 255.0,
+        b: (hex & 0xFF) / 255.0,
+      );
+
+  /// Radial sun sprite: a small blown-out core that falls off through warm
+  /// gold to nothing. Same DataTexture + additive trick as the stars.
+  three.DataTexture _makeSunSprite() {
+    const size = 128;
+    final data = Uint8List(size * size * 4);
+    const c = (size - 1) / 2.0;
+    for (var y = 0; y < size; y++) {
+      for (var x = 0; x < size; x++) {
+        final dx = (x - c) / c;
+        final dy = (y - c) / c;
+        final d = math.sqrt(dx * dx + dy * dy).clamp(0.0, 1.0);
+        // Hot core out to 0.14, then a long soft corona.
+        final double a;
+        if (d <= 0.14) {
+          a = 1.0;
+        } else {
+          a = math.pow(1.0 - (d - 0.14) / 0.86, 3.2).toDouble();
+        }
+        // White-hot in the middle, gold at the rim.
+        final warm = (d / 0.6).clamp(0.0, 1.0);
+        final i = (y * size + x) * 4;
+        data[i] = 255;
+        data[i + 1] = (255 - 52 * warm).round();
+        data[i + 2] = (250 - 154 * warm).round();
+        data[i + 3] = (a * 255).round().clamp(0, 255);
+      }
+    }
+    final tex = three.DataTexture(
+      three.Uint8Array.fromList(data),
+      size,
+      size,
+      three.RGBAFormat,
+      three.UnsignedByteType,
+    );
+    tex.magFilter = three.LinearFilter;
+    tex.minFilter = three.LinearFilter;
+    tex.generateMipmaps = false;
+    tex.needsUpdate = true;
+    return tex;
+  }
+
+  /// Inside-out sphere shaded per-vertex: deep blue at the zenith easing to a
+  /// pale haze at the horizon. Unlit ([MeshBasicMaterial]) so the day light rig
+  /// cannot darken it.
+  three.Mesh _buildSkyDome() {
+    const radius = 140.0;
+    final geo = three.SphereGeometry(radius, 48, 32);
+    final pos = geo.getAttributeFromString('position');
+    final count = pos.count as int;
+    final zenith = _rgbOf(_kSkyZenith);
+    final horizon = _rgbOf(_kSkyHorizon);
+
+    final colors = <double>[];
+    for (var i = 0; i < count; i++) {
+      final v = ((pos.getY(i) ?? 0).toDouble() / radius).clamp(-1.0, 1.0);
+      // Smoothstep across the band the camera can actually see, so the whole
+      // gradient lands on screen instead of below the globe.
+      final u = ((v + 0.15) / 0.9).clamp(0.0, 1.0);
+      final t = u * u * (3 - 2 * u);
+      colors.addAll([
+        horizon.r + (zenith.r - horizon.r) * t,
+        horizon.g + (zenith.g - horizon.g) * t,
+        horizon.b + (zenith.b - horizon.b) * t,
+      ]);
+    }
+    geo.setAttributeFromString(
+      'color',
+      three.Float32BufferAttribute.fromList(colors, 3, false),
+    );
+
+    final mesh = three.Mesh(
+      geo,
+      three.MeshBasicMaterial({
+        three.MaterialProperty.vertexColors: true,
+        three.MaterialProperty.side: three.BackSide,
+        three.MaterialProperty.depthWrite: false,
+        three.MaterialProperty.fog: false,
+      }),
+    );
+    mesh.frustumCulled = false;
+    mesh.renderOrder = -1000;
+    return mesh;
+  }
+
+  /// Sun disc + a wide, faint scattering halo around it. Two camera-facing
+  /// quads — the camera never moves in this scene, so no billboarding needed
+  /// beyond the one-time [three.Object3D.lookAt].
+  three.Group _buildSun() {
+    _sunSprite ??= _makeSunSprite();
+    final group = three.Group();
+
+    three.Mesh quad(double size, double opacity, int order) {
+      final mesh = three.Mesh(
+        three.PlaneGeometry(size, size),
+        three.MeshBasicMaterial({
+          three.MaterialProperty.map: _sunSprite,
+          three.MaterialProperty.transparent: true,
+          three.MaterialProperty.opacity: opacity,
+          three.MaterialProperty.blending: three.AdditiveBlending,
+          three.MaterialProperty.depthWrite: false,
+          three.MaterialProperty.side: three.DoubleSide,
+          three.MaterialProperty.fog: false,
+        }),
+      );
+      mesh.position.setValues(_kSunX, _kSunY, _kSunZ);
+      mesh.lookAt(three.Vector3(0, 3, 9)); // the fixed camera
+      mesh.frustumCulled = false;
+      mesh.renderOrder = order;
+      return mesh;
+    }
+
+    group.add(quad(78, 0.22, -999)); // atmospheric scatter
+    group.add(quad(24, 1.0, -998)); // the sun itself
+    return group;
+  }
+
   three.Group _normalise(three.Object3D model, double targetSize) {
     final box = three.BoundingBox()..setFromObject(model);
     final center = three.Vector3();
@@ -334,20 +482,48 @@ class _SpatialObjectWidgetState extends State<SpatialObjectWidget>
     tj.camera.lookAt(three.Vector3(0, -1.0, 0));
 
     tj.scene = three.Scene();
-    tj.scene.background = three.Color.fromHex32(0x0d1b2e);
 
-    final starfield = _buildStarfield();
-    tj.scene.add(starfield);
-    _starfieldRoot = starfield;
+    if (_sceneIsDark) {
+      tj.scene.background = three.Color.fromHex32(0x0d1b2e);
 
-    tj.scene.add(three.HemisphereLight(0xb8c6ff, 0x1a2233, 0.8));
-    tj.scene.add(three.AmbientLight(0xffffff, 0.6));
-    tj.scene.add(
-      three.DirectionalLight(0xffffff, 1.2)..position.setValues(4, 8, 6),
-    );
-    tj.scene.add(
-      three.DirectionalLight(0xaaccff, 0.5)..position.setValues(-4, 2, -3),
-    );
+      final starfield = _buildStarfield();
+      tj.scene.add(starfield);
+      _starfieldRoot = starfield;
+
+      tj.scene.add(three.HemisphereLight(0xb8c6ff, 0x1a2233, 0.8));
+      tj.scene.add(three.AmbientLight(0xffffff, 0.6));
+      tj.scene.add(
+        three.DirectionalLight(0xffffff, 1.2)..position.setValues(4, 8, 6),
+      );
+      tj.scene.add(
+        three.DirectionalLight(0xaaccff, 0.5)..position.setValues(-4, 2, -3),
+      );
+    } else {
+      // Daytime: blue sky + corner sun instead of the star shell.
+      tj.scene.background = three.Color.fromHex32(_kSkyClear);
+      _starfieldRoot = null;
+
+      tj.scene.add(_buildSkyDome());
+      tj.scene.add(_buildSun());
+
+      // Day rig. The key light shares the sun's left-and-high azimuth but sits
+      // on the camera's side in Z: a light placed at the sun itself would
+      // backlight the craft into a silhouette against a bright sky, which is
+      // exactly what must not happen here. The warm rim light below carries
+      // the "lit from over there" read instead.
+      tj.scene.add(three.HemisphereLight(0xcfe4ff, 0xa79c86, 0.85));
+      tj.scene.add(three.AmbientLight(0xffffff, 0.35));
+      tj.scene.add(
+        three.DirectionalLight(0xfff3da, 1.45)..position.setValues(-9, 11, 12),
+      );
+      tj.scene.add(
+        three.DirectionalLight(0xffd9a0, 0.55)
+          ..position.setValues(_kSunX, _kSunY + 6, _kSunZ),
+      );
+      tj.scene.add(
+        three.DirectionalLight(0xbcd8ff, 0.4)..position.setValues(7, -4, 6),
+      );
+    }
 
     try {
       // ── Plane ───────────────────────────────────────────────────────────────
@@ -540,9 +716,10 @@ class _SpatialObjectWidgetState extends State<SpatialObjectWidget>
   }
 
   // ── Viewer lifecycle ─────────────────────────────────────────────────────────
-  void _rebuildViewer(Size size, double dpr) {
+  void _rebuildViewer(Size size, double dpr, bool isDark) {
     _viewerSize = size;
     _dpr = dpr;
+    _sceneIsDark = isDark;
     _watchdog?.cancel();
     _setupGen++;
     _js?.dispose();
@@ -551,6 +728,8 @@ class _SpatialObjectWidgetState extends State<SpatialObjectWidget>
     _starfieldRoot = null;
     _starSprite?.dispose();
     _starSprite = null;
+    _sunSprite?.dispose();
+    _sunSprite = null;
     _sceneReady = false;
     _error = null;
     _planeQuat = three.Quaternion(0, 0, 0, 1);
@@ -560,7 +739,7 @@ class _SpatialObjectWidgetState extends State<SpatialObjectWidget>
       renderNumber: -1, // Continuous infinite rendering
       settings: three.Settings(
         antialias: true,
-        clearColor: 0x0d1b2e,
+        clearColor: isDark ? 0x0d1b2e : _kSkyClear,
         clearAlpha: 1.0,
         alpha: false,
         // Render at full native resolution so the scene is crisp on HiDPI displays.
@@ -577,15 +756,20 @@ class _SpatialObjectWidgetState extends State<SpatialObjectWidget>
     });
   }
 
-  void _ensureViewer(Size size, double dpr) {
-    if (_sameSize(_viewerSize, size) && _js != null && _error == null) return;
-    _rebuildViewer(size, dpr);
+  void _ensureViewer(Size size, double dpr, bool isDark) {
+    if (_sameSize(_viewerSize, size) &&
+        _js != null &&
+        _error == null &&
+        isDark == _sceneIsDark) {
+      return;
+    }
+    _rebuildViewer(size, dpr, isDark);
   }
 
   void _retry() {
     final size = _viewerSize;
     if (size == null) return;
-    _rebuildViewer(size, _dpr);
+    _rebuildViewer(size, _dpr, _sceneIsDark);
     if (mounted) setState(() {});
   }
 
@@ -643,7 +827,7 @@ class _SpatialObjectWidgetState extends State<SpatialObjectWidget>
         !_sceneReady &&
         _viewerSize != null) {
       // GPU context often stalls after app switch — recreate the viewer.
-      _rebuildViewer(_viewerSize!, _dpr);
+      _rebuildViewer(_viewerSize!, _dpr, _sceneIsDark);
       setState(() {});
     }
   }
@@ -680,6 +864,7 @@ class _SpatialObjectWidgetState extends State<SpatialObjectWidget>
     _sub?.cancel();
     _setupGen++;
     _starSprite?.dispose();
+    _sunSprite?.dispose();
     _js?.dispose();
     three.loading.clear();
     super.dispose();
@@ -687,11 +872,14 @@ class _SpatialObjectWidgetState extends State<SpatialObjectWidget>
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
+    final isDark = colors.isDark;
+
     return LayoutBuilder(
       builder: (ctx, con) {
         final size = Size(con.maxWidth, con.maxHeight);
         if (size.width >= _minPx && size.height >= _minPx) {
-          _ensureViewer(size, MediaQuery.of(ctx).devicePixelRatio);
+          _ensureViewer(size, MediaQuery.of(ctx).devicePixelRatio, isDark);
         }
         final js = _js;
 
@@ -704,7 +892,7 @@ class _SpatialObjectWidgetState extends State<SpatialObjectWidget>
             if (_error != null)
               Positioned.fill(
                 child: Material(
-                  color: Colors.black54,
+                  color: colors.scrim,
                   child: InkWell(
                     onTap: _retry,
                     child: Center(
@@ -713,8 +901,8 @@ class _SpatialObjectWidgetState extends State<SpatialObjectWidget>
                         child: Text(
                           _error!,
                           textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            color: Colors.white,
+                          style: TextStyle(
+                            color: colors.onScrim,
                             fontSize: 12,
                           ),
                         ),
@@ -729,15 +917,20 @@ class _SpatialObjectWidgetState extends State<SpatialObjectWidget>
               child: Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.6),
-                  border: Border.all(color: Colors.yellowAccent),
+                  color: isDark
+                      ? Colors.black.withValues(alpha: 0.6)
+                      : Colors.white.withValues(alpha: 0.86),
+                  border: Border.all(
+                    color: isDark ? Colors.yellowAccent : colors.warning,
+                  ),
+                  borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text(
                   'ROLL: ${_planeCurX.toStringAsFixed(1)}° → ${_planeTgtX.toStringAsFixed(1)}°\n'
                   'PITCH: ${_planeCurY.toStringAsFixed(1)}° → ${_planeTgtY.toStringAsFixed(1)}°\n'
                   'YAW: ${_planeCurZ.toStringAsFixed(1)}° → ${_planeTgtZ.toStringAsFixed(1)}°',
-                  style: const TextStyle(
-                    color: Colors.yellowAccent,
+                  style: TextStyle(
+                    color: isDark ? Colors.yellowAccent : colors.warning,
                     fontSize: 11,
                     fontWeight: FontWeight.bold,
                   ),
@@ -749,7 +942,9 @@ class _SpatialObjectWidgetState extends State<SpatialObjectWidget>
               child: Text(
                 'click and drag to interact',
                 style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.30),
+                  color: isDark
+                      ? Colors.white.withValues(alpha: 0.30)
+                      : Colors.black.withValues(alpha: 0.45),
                   fontSize: 10,
                 ),
               ),

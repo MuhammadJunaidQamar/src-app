@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:src/model/chart_model.dart';
+import 'package:src/theme/app_theme_colors.dart';
 
 class LineChartDisplayScreen extends StatelessWidget {
   final ChartModel chartModel;
@@ -12,7 +13,8 @@ class LineChartDisplayScreen extends StatelessWidget {
       appBar: AppBar(
         title: Text(chartModel.type),
         titleTextStyle: TextStyle(
-          color: chartModel.lineColor.withOpacity(0.2),
+          // Series colour, darkened on light canvases so the title stays legible.
+          color: context.colors.tuneAccent(chartModel.lineColor),
           fontSize: 25,
           fontWeight: FontWeight.bold,
         ),

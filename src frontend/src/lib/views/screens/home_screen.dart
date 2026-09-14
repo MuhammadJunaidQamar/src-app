@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:src/theme/app_theme_colors.dart';
 import 'package:src/utils/connection/connection_config.dart';
 import 'package:src/utils/constants/constants.dart';
 import 'package:src/utils/global/global.dart';
@@ -177,17 +178,18 @@ class _LinkBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final warning = context.colors.warning;
     return Material(
-      color: Colors.orange.withValues(alpha: 0.15),
+      color: warning.withValues(alpha: 0.15),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
         child: Row(
           children: [
-            const SizedBox(
+            SizedBox(
               width: 16,
               height: 16,
               child: CircularProgressIndicator(
-                color: Colors.orange,
+                color: warning,
                 strokeWidth: 2,
               ),
             ),
@@ -195,8 +197,8 @@ class _LinkBanner extends StatelessWidget {
             Expanded(
               child: Text(
                 text,
-                style: const TextStyle(
-                  color: Colors.orange,
+                style: TextStyle(
+                  color: warning,
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
                 ),

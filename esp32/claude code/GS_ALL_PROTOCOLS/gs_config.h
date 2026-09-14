@@ -45,7 +45,7 @@
 // Raw legacy binary telemetry on USB Serial (MATLAB / Python serial_reader).
 // This is byte-for-byte what the original Ground_Station_Code.ino emitted.
 #ifndef GS_ENABLE_SERIAL_BINARY
-#define GS_ENABLE_SERIAL_BINARY 1
+#define GS_ENABLE_SERIAL_BINARY 0
 #endif
 
 // Newline-delimited JSON on USB Serial, identical to the Wi-Fi/BLE payload.
@@ -82,8 +82,8 @@
 #define GS_AP_MAX_CLIENTS 4
 
 // Router (LAN) mode: your home/campus Wi-Fi. Leave GS_STA_SSID empty to skip.
-#define GS_STA_SSID     ""
-#define GS_STA_PASSWORD ""
+#define GS_STA_SSID     "Imran 649M-4G"
+#define GS_STA_PASSWORD "45674567"
 #define GS_STA_CONNECT_TIMEOUT_MS 15000UL
 #define GS_STA_RETRY_INTERVAL_MS  20000UL
 

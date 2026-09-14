@@ -4,6 +4,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:src/model/model.dart';
+import 'package:src/theme/app_theme_colors.dart';
 import 'package:src/utils/constants/constants.dart';
 import 'package:src/view_model/view_model.dart';
 import 'package:src/widgets/custom_card_widget.dart';
@@ -112,11 +113,20 @@ class _TemperatureGraphState extends State<TemperatureGraph> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
+    final axisLabelColor = colors.textMuted;
+    // Series hue stays; tuned so it keeps contrast on the light card (no-op in
+    // dark mode).
+    final lineColor = colors.tuneAccent(AppColors.selectionColor);
+
     return CustomCard(
       child: Column(
         children: [
-          const Text('Temperature Graph',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          Text('Temperature Graph',
+              style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: colors.textStrong)),
           const SizedBox(height: 20),
           _isLoading
               ? const CircularProgressIndicator()
@@ -141,8 +151,9 @@ class _TemperatureGraphState extends State<TemperatureGraph> {
                                 return SideTitleWidget(
                                   axisSide: meta.axisSide,
                                   child: Text(value.toInt().toString(),
-                                      style: const TextStyle(
-                                          fontSize: 12, color: Colors.grey)),
+                                      style: TextStyle(
+                                          fontSize: 12,
+                                          color: axisLabelColor)),
                                 );
                               },
                             ),
@@ -155,8 +166,8 @@ class _TemperatureGraphState extends State<TemperatureGraph> {
                                   axisSide: meta.axisSide,
                                   child: Text(
                                     value.toStringAsFixed(1),
-                                    style: const TextStyle(
-                                        fontSize: 12, color: Colors.grey),
+                                    style: TextStyle(
+                                        fontSize: 12, color: axisLabelColor),
                                   ),
                                 );
                               },
@@ -166,7 +177,7 @@ class _TemperatureGraphState extends State<TemperatureGraph> {
                         borderData: FlBorderData(show: false),
                         lineBarsData: [
                           LineChartBarData(
-                            color: AppColors.selectionColor,
+                            color: lineColor,
                             barWidth: 2.5,
                             belowBarData: BarAreaData(
                               show: true,
@@ -174,7 +185,7 @@ class _TemperatureGraphState extends State<TemperatureGraph> {
                                 begin: Alignment.topCenter,
                                 end: Alignment.bottomCenter,
                                 colors: [
-                                  AppColors.selectionColor.withOpacity(0.5),
+                                  lineColor.withOpacity(0.5),
                                   Colors.transparent,
                                 ],
                               ),

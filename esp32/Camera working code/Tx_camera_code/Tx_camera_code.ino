@@ -7,7 +7,7 @@
 //   BLE GS   : "[BOOT] MAC (use in Tx_camera receiverMAC): XX:XX:..."
 //   Router GS: "GS MAC      : XX:XX:..."  (STA MAC)
 //   Wi-Fi GS : "GS MAC (AP) : XX:XX:..."  (AP MAC — NOT the STA one)
-uint8_t receiverMAC[] = {0x28, 0x56, 0x2f, 0x49, 0xc0, 0xc8};
+uint8_t receiverMAC[] = {0x28, 0x56, 0x2f, 0x49, 0xd3, 0x7c};
 
 // Fallback only. At boot the sender probes channels 1-13 and locks onto the
 // one where the ground station ACKs (needed for the Router GS, whose channel

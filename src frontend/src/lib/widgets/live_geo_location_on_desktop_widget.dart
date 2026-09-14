@@ -8,7 +8,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:src/utils/webview_environment.dart';
 import 'package:src/model/model.dart';
-import 'package:src/utils/constants/constants.dart';
+import 'package:src/theme/app_theme_colors.dart';
 import 'package:src/utils/desktop_interaction.dart';
 import 'package:src/utils/mapbox_init.dart';
 import 'package:src/utils/mapbox_map_config.dart';
@@ -37,7 +37,13 @@ class LiveGeoLocationOnDesktopWidgetState
   double latitude = MapboxMapConfig.defaultLatitude;
   double longitude = MapboxMapConfig.defaultLongitude;
 
-  late final String _mapUrl = _buildMapUrl();
+  /// Basemap lighting, resolved from the app theme in [didChangeDependencies]
+  /// (never from [initState] — the theme is not available there).
+  String _lightPreset = MapboxMapConfig.basemapLightPreset;
+
+  /// Built once, on the first build, so the WebView is not reloaded when the
+  /// theme flips; later flips go over the JS bridge instead.
+  String? _mapUrl;
 
   String _buildMapUrl() {
     // Desktop serves assets via InAppLocalhostServer on :8080. On web, resolve
@@ -55,7 +61,7 @@ class LiveGeoLocationOnDesktopWidgetState
       'icon': iconUrl,
       'lng': longitude.toString(),
       'lat': latitude.toString(),
-      'lightPreset': MapboxMapConfig.basemapLightPreset,
+      'lightPreset': _lightPreset,
       'theme': MapboxMapConfig.basemapTheme,
       'show3dObjects': MapboxMapConfig.basemapShow3dObjects ? '1' : '0',
       // Cache-buster: WebView2 otherwise keeps serving the old HTML asset.
@@ -71,6 +77,24 @@ class LiveGeoLocationOnDesktopWidgetState
   void initState() {
     super.initState();
     _subscribeToData();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final preset = MapboxMapConfig.lightPresetFor(Theme.of(context).brightness);
+    if (preset == _lightPreset) return;
+    _lightPreset = preset;
+    // First call lands before the URL is built, so the preset simply rides
+    // along in the query string; later theme flips are pushed to the live map.
+    _pushLightPresetToMap();
+  }
+
+  void _pushLightPresetToMap() {
+    if (!_mapReady || _webController == null) return;
+    _webController!.evaluateJavascript(
+      source: "window.mapBridge.setLightPreset('$_lightPreset');",
+    );
   }
 
   void _subscribeToData() {
@@ -154,6 +178,7 @@ class LiveGeoLocationOnDesktopWidgetState
           _isLoading = false;
           _mapError = null;
         });
+        _pushLightPresetToMap();
         _syncMapToCurrentPosition(animate: false);
         return;
       }
@@ -285,6 +310,9 @@ class LiveGeoLocationOnDesktopWidgetState
       return const MapMissingTokenPlaceholder();
     }
 
+    final colors = context.colors;
+    final mapUrl = _mapUrl ??= _buildMapUrl();
+
     return ClipRRect(
       borderRadius: BorderRadius.circular(12),
       child: Stack(
@@ -294,7 +322,7 @@ class LiveGeoLocationOnDesktopWidgetState
             autofocus: true,
             child: InAppWebView(
               webViewEnvironment: webViewEnvironment,
-              initialUrlRequest: URLRequest(url: WebUri(_mapUrl)),
+              initialUrlRequest: URLRequest(url: WebUri(mapUrl)),
               initialSettings: InAppWebViewSettings(
                 transparentBackground: false,
                 supportZoom: false,
@@ -305,7 +333,7 @@ class LiveGeoLocationOnDesktopWidgetState
                 verticalScrollBarEnabled: false,
                 disableContextMenu: false,
                 isInspectable: kDebugMode,
-                underPageBackgroundColor: AppColors.eigengrauColor,
+                underPageBackgroundColor: colors.background,
               ),
               onWebViewCreated: (controller) {
                 _webController = controller;
@@ -338,6 +366,7 @@ class LiveGeoLocationOnDesktopWidgetState
                       _isLoading = false;
                       _mapError = null;
                     });
+                    _pushLightPresetToMap();
                     _syncMapToCurrentPosition(animate: false);
                   },
                 );
@@ -396,13 +425,13 @@ class LiveGeoLocationOnDesktopWidgetState
             ),
           ),
           if (_isLoading)
-            const ColoredBox(
-              color: AppColors.eigengrauColor,
-              child: Center(child: CircularProgressIndicator.adaptive()),
+            ColoredBox(
+              color: colors.background,
+              child: const Center(child: CircularProgressIndicator.adaptive()),
             ),
           if (_mapError != null)
             ColoredBox(
-              color: AppColors.eigengrauColor,
+              color: colors.background,
               child: Center(
                 child: Padding(
                   padding: const EdgeInsets.all(24),
@@ -410,11 +439,11 @@ class LiveGeoLocationOnDesktopWidgetState
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(Icons.map_outlined,
-                          size: 40, color: AppColors.mainTextColor2),
+                          size: 40, color: colors.textSecondary),
                       const SizedBox(height: 12),
                       Text(
                         _mapError!,
-                        style: const TextStyle(color: AppColors.mainTextColor2),
+                        style: TextStyle(color: colors.textSecondary),
                         textAlign: TextAlign.center,
                       ),
                     ],
@@ -485,12 +514,16 @@ class _ZoomButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return MouseRegion(
       cursor: onPressed == null ? SystemMouseCursors.basic : clickCursor,
       child: FloatingActionButton.small(
         heroTag: heroTag,
         mouseCursor:
             onPressed == null ? SystemMouseCursors.basic : clickCursor,
+        // Matches MapRecenterButton: a readable surface over the basemap.
+        backgroundColor: colors.surfaceElevated,
+        foregroundColor: colors.textPrimary,
         onPressed: onPressed,
         child: Icon(icon),
       ),

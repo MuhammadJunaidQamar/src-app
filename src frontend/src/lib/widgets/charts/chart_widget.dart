@@ -4,6 +4,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:src/model/model.dart';
+import 'package:src/theme/app_theme_colors.dart';
 import 'package:src/view_model/view_model.dart';
 
 class _LineChart extends StatelessWidget {
@@ -27,17 +28,30 @@ class _LineChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
+    // Captured here so the fl_chart closures below never need a BuildContext.
+    final axisLabelColor = colors.textSecondary;
+    final seriesColor = colors.tuneAccent(lineColor);
+
     return isLoading
         ? Center(child: CircularProgressIndicator.adaptive())
         : ClipRect(
             child: LineChart(
             LineChartData(
               clipData: const FlClipData.all(),
-              lineTouchData: LineTouchData(handleBuiltInTouches: true),
+              lineTouchData: LineTouchData(
+                handleBuiltInTouches: true,
+                touchTooltipData: LineTouchTooltipData(
+                  getTooltipColor: (touchedSpot) => colors.surfaceElevated,
+                  tooltipBorder: BorderSide(color: colors.cardBorder),
+                ),
+              ),
               gridData: const FlGridData(show: false),
               titlesData: FlTitlesData(
-                bottomTitles: AxisTitles(sideTitles: bottomTitles(spots)),
-                leftTitles: AxisTitles(sideTitles: leftTitles(spots)),
+                bottomTitles:
+                    AxisTitles(sideTitles: bottomTitles(spots, axisLabelColor)),
+                leftTitles:
+                    AxisTitles(sideTitles: leftTitles(spots, axisLabelColor)),
                 rightTitles:
                     const AxisTitles(sideTitles: SideTitles(showTitles: false)),
                 topTitles:
@@ -46,15 +60,17 @@ class _LineChart extends StatelessWidget {
               borderData: FlBorderData(
                 show: true,
                 border: Border(
-                  bottom:
-                      BorderSide(color: lineColor.withOpacity(0.2), width: 4),
+                  bottom: BorderSide(
+                    color: seriesColor.withValues(alpha: 0.2),
+                    width: 4,
+                  ),
                   left: const BorderSide(color: Colors.transparent),
                 ),
               ),
               lineBarsData: [
                 LineChartBarData(
                   isCurved: true,
-                  color: lineColor,
+                  color: seriesColor,
                   barWidth: 4,
                   isStrokeCapRound: true,
                   dotData: const FlDotData(show: false),
@@ -80,12 +96,13 @@ class _LineChart extends StatelessWidget {
     return '${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
   }
 
-  SideTitles bottomTitles(List<FlSpot> spots) => SideTitles(
+  SideTitles bottomTitles(List<FlSpot> spots, Color labelColor) => SideTitles(
         showTitles: true,
         reservedSize: 32,
         interval: (numberOfValuesShown / 3).ceilToDouble(),
         getTitlesWidget: (double value, TitleMeta meta) {
-          const style = TextStyle(
+          final style = TextStyle(
+            color: labelColor,
             fontWeight: FontWeight.bold,
             fontSize: 16,
           );
@@ -106,7 +123,7 @@ class _LineChart extends StatelessWidget {
         },
       );
 
-  SideTitles leftTitles(List<FlSpot> spots) {
+  SideTitles leftTitles(List<FlSpot> spots, Color labelColor) {
     final double minY = getMinY(spots);
     final double maxY = getMaxY(spots);
     final double interval = calculateYInterval(minY, maxY);
@@ -116,7 +133,8 @@ class _LineChart extends StatelessWidget {
       showTitles: true,
       interval: interval,
       getTitlesWidget: (double value, TitleMeta meta) {
-        const style = TextStyle(
+        final style = TextStyle(
+          color: labelColor,
           fontWeight: FontWeight.bold,
           fontSize: 14,
         );
@@ -288,7 +306,7 @@ class ChartWidgetState extends State<ChartWidget> {
               Text(
                 "${widget.displayTitle} ${yValue.toStringAsFixed(2)}${widget.unit}",
                 style: TextStyle(
-                  color: widget.lineColor,
+                  color: context.colors.tuneAccent(widget.lineColor),
                   fontSize: 32,
                   fontWeight: FontWeight.bold,
                   letterSpacing: 2,

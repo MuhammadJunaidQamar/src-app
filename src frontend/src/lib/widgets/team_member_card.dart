@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:src/model/team_member_model.dart';
-import 'package:src/utils/constants/constants.dart';
+import 'package:src/theme/app_theme_colors.dart';
 import 'package:src/utils/desktop_interaction.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -37,9 +37,14 @@ class _TeamMemberCardState extends State<TeamMemberCard> {
 
   @override
   Widget build(BuildContext context) {
-    final borderColor =
-        _hovered ? AppColors.contentColorCyan : AppColors.mediumSeaGreenColor;
+    final colors = context.colors;
+    final borderColor = _hovered ? colors.info : colors.positive;
     final stroke = _hovered ? kBorderWidthHover : kBorderWidth;
+    // The photo fades to grayscale at the bottom and a wash is laid over it so
+    // the caption reads. It has to flip with the theme: a black wash under
+    // light text on a dark canvas, a white wash under dark text on a light one.
+    final wash =
+        colors.isDark ? const Color(0xFF000000) : const Color(0xFFFFFFFF);
 
     return MouseRegion(
       onEnter: (_) => setState(() => _hovered = true),
@@ -120,18 +125,18 @@ class _TeamMemberCardState extends State<TeamMemberCard> {
                         ),
                       ),
                     ),
-                    const DecoratedBox(
+                    DecoratedBox(
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
                           begin: Alignment.topCenter,
                           end: Alignment.bottomCenter,
                           colors: [
-                            Color(0x00000000),
-                            Color(0x00000000),
-                            Color(0x99000000),
-                            Color(0xCC000000),
+                            wash.withValues(alpha: 0.0),
+                            wash.withValues(alpha: 0.0),
+                            wash.withValues(alpha: 0.6),
+                            wash.withValues(alpha: 0.8),
                           ],
-                          stops: [0.0, 0.45, 0.72, 1.0],
+                          stops: const [0.0, 0.45, 0.72, 1.0],
                         ),
                       ),
                     ),
@@ -147,8 +152,8 @@ class _TeamMemberCardState extends State<TeamMemberCard> {
                             widget.member.name,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: AppColors.mainTextColor1,
+                            style: TextStyle(
+                              color: colors.textStrong,
                               fontSize: 15,
                               fontWeight: FontWeight.w700,
                               height: 1.15,
@@ -159,8 +164,8 @@ class _TeamMemberCardState extends State<TeamMemberCard> {
                             widget.member.role,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: AppColors.zincColor,
+                            style: TextStyle(
+                              color: colors.textPrimary,
                               fontSize: 12,
                               fontWeight: FontWeight.w500,
                             ),
@@ -177,14 +182,17 @@ class _TeamMemberCardState extends State<TeamMemberCard> {
                                       width: 18,
                                       height: 18,
                                       decoration: BoxDecoration(
-                                        color: AppColors.contentColorCyan,
+                                        color: colors.info,
                                         borderRadius: BorderRadius.circular(3),
                                       ),
                                       alignment: Alignment.center,
-                                      child: const Text(
+                                      child: Text(
                                         'in',
+                                        // `surface` inverts against `info` in
+                                        // both modes: near-black on bright
+                                        // cyan, white on deep teal.
                                         style: TextStyle(
-                                          color: AppColors.eigengrauColor,
+                                          color: colors.surface,
                                           fontSize: 10,
                                           fontWeight: FontWeight.w800,
                                           height: 1,
@@ -195,7 +203,7 @@ class _TeamMemberCardState extends State<TeamMemberCard> {
                                     Text(
                                       'LinkedIn',
                                       style: TextStyle(
-                                        color: AppColors.contentColorCyan
+                                        color: colors.info
                                             .withValues(alpha: 0.95),
                                         fontSize: 11,
                                         fontWeight: FontWeight.w600,

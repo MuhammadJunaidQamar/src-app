@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:src/data/side_menu_data.dart';
+import 'package:src/theme/app_theme_colors.dart';
 import 'package:src/utils/connection/connection_config.dart';
-import 'package:src/utils/constants/constants.dart';
 import 'package:src/utils/desktop_interaction.dart';
 import 'package:src/utils/global/global.dart';
 import 'package:src/utils/routing/routes.dart';
@@ -19,21 +19,22 @@ class SideMenuWidget extends StatefulWidget {
 
 class _SideMenuWidgetState extends State<SideMenuWidget> {
   Future<void> _confirmChangeConnection() async {
+    final colors = context.colors;
     final currentMode = ConnectionConfig.selectedMode;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: AppColors.blackPearlColor,
-        title: const Text(
+        backgroundColor: colors.surfaceElevated,
+        title: Text(
           'Change connection?',
-          style: TextStyle(color: AppColors.contentColorWhite),
+          style: TextStyle(color: colors.textStrong),
         ),
         content: Text(
           currentMode == null
               ? 'You will return to connection setup. Live telemetry will stop.'
               : 'Disconnect from ${ConnectionConfig.modeTitle(currentMode)} '
                   'and choose a different connection method?',
-          style: const TextStyle(color: AppColors.mainTextColor2),
+          style: TextStyle(color: colors.textSecondary),
         ),
         actions: [
           TextButton(
@@ -55,6 +56,7 @@ class _SideMenuWidgetState extends State<SideMenuWidget> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final data = SideMenuData();
     final int displayItemsInBuildMenuEntry = 3;
     return Container(
@@ -62,18 +64,19 @@ class _SideMenuWidgetState extends State<SideMenuWidget> {
       child: Column(
         children: [
           CustomCard(
-            color: AppColors.blackPearlColor,
+            color: colors.surfaceElevated,
             child: ListView.builder(
               shrinkWrap: true,
               itemCount: data.menu.length > displayItemsInBuildMenuEntry
                   ? displayItemsInBuildMenuEntry
                   : data.menu.length,
-              itemBuilder: (context, index) => buildMenuEntry(data, index),
+              itemBuilder: (context, index) =>
+                  buildMenuEntry(data, index, colors),
             ),
           ),
           Spacer(),
           CustomCard(
-            color: AppColors.blackPearlColor,
+            color: colors.surfaceElevated,
             child: Column(
               children: [
                 ThemeWidget(),
@@ -84,9 +87,9 @@ class _SideMenuWidgetState extends State<SideMenuWidget> {
                     padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
                     child: Row(
                       children: [
-                        const Icon(
+                        Icon(
                           Icons.swap_horiz,
-                          color: AppColors.mainTextColor2,
+                          color: colors.textSecondary,
                           size: 22,
                         ),
                         const SizedBox(width: 12),
@@ -94,11 +97,11 @@ class _SideMenuWidgetState extends State<SideMenuWidget> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text(
+                              Text(
                                 'Change connection',
                                 style: TextStyle(
                                   fontSize: 16,
-                                  color: AppColors.textColor,
+                                  color: colors.textPrimary,
                                 ),
                               ),
                               if (ConnectionConfig.selectedMode != null)
@@ -106,9 +109,9 @@ class _SideMenuWidgetState extends State<SideMenuWidget> {
                                   ConnectionConfig.modeTitle(
                                     ConnectionConfig.selectedMode!,
                                   ),
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 11,
-                                    color: AppColors.mainTextColor3,
+                                    color: colors.textTertiary,
                                   ),
                                 ),
                             ],
@@ -123,7 +126,7 @@ class _SideMenuWidgetState extends State<SideMenuWidget> {
                     shrinkWrap: true,
                     itemCount: data.menu.length - displayItemsInBuildMenuEntry,
                     itemBuilder: (context, index) => infoAndThemeCorner(
-                        data, index + displayItemsInBuildMenuEntry),
+                        data, index + displayItemsInBuildMenuEntry, colors),
                   ),
               ],
             ),
@@ -133,15 +136,17 @@ class _SideMenuWidgetState extends State<SideMenuWidget> {
     );
   }
 
-  Widget buildMenuEntry(SideMenuData data, int index) {
+  Widget buildMenuEntry(SideMenuData data, int index, AppThemeColors colors) {
     final isSelected = Global.pageIdx == index;
+    final entryColor = colors.tuneAccent(data.menu[index].color);
+    final onEntryColor = _onMenuAccent(colors, entryColor);
     return Container(
       margin: EdgeInsets.symmetric(vertical: 5),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.all(
           Radius.circular(16.0),
         ),
-        color: isSelected ? data.menu[index].color : Colors.transparent,
+        color: isSelected ? entryColor : Colors.transparent,
       ),
       child: InkWell(
         mouseCursor: clickCursor,
@@ -157,18 +162,14 @@ class _SideMenuWidgetState extends State<SideMenuWidget> {
               padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 7),
               child: Icon(
                 data.menu[index].icon,
-                color: isSelected
-                    ? AppColors.backgroundColor
-                    : data.menu[index].color,
+                color: isSelected ? onEntryColor : entryColor,
               ),
             ),
             Text(
               data.menu[index].title,
               style: TextStyle(
                 fontSize: 16,
-                color: isSelected
-                    ? AppColors.backgroundColor
-                    : AppColors.textColor,
+                color: isSelected ? onEntryColor : colors.textPrimary,
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
               ),
             ),
@@ -178,15 +179,18 @@ class _SideMenuWidgetState extends State<SideMenuWidget> {
     );
   }
 
-  Widget infoAndThemeCorner(SideMenuData data, int index) {
+  Widget infoAndThemeCorner(
+      SideMenuData data, int index, AppThemeColors colors) {
     final isSelected = Global.pageIdx == index;
+    final entryColor = colors.tuneAccent(data.menu[index].color);
+    final onEntryColor = _onMenuAccent(colors, entryColor);
     return Container(
       margin: EdgeInsets.symmetric(vertical: 5),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.all(
           Radius.circular(16.0),
         ),
-        color: isSelected ? data.menu[index].color : Colors.transparent,
+        color: isSelected ? entryColor : Colors.transparent,
       ),
       child: InkWell(
         mouseCursor: clickCursor,
@@ -202,18 +206,14 @@ class _SideMenuWidgetState extends State<SideMenuWidget> {
               padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 7),
               child: Icon(
                 data.menu[index].icon,
-                color: isSelected
-                    ? AppColors.backgroundColor
-                    : data.menu[index].color,
+                color: isSelected ? onEntryColor : entryColor,
               ),
             ),
             Text(
               data.menu[index].title,
               style: TextStyle(
                 fontSize: 16,
-                color: isSelected
-                    ? AppColors.backgroundColor
-                    : AppColors.textColor,
+                color: isSelected ? onEntryColor : colors.textPrimary,
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
               ),
             ),
@@ -222,4 +222,20 @@ class _SideMenuWidgetState extends State<SideMenuWidget> {
       ),
     );
   }
+}
+
+/// Near-black ink for rows whose fill is too bright to carry white text.
+const Color _menuInk = Color(0xFF10151D);
+
+/// Icon/label colour for a selected menu row painted in [fill].
+///
+/// The row used to draw its contents in the page background colour, which only
+/// reads while that page colour is dark. Pick whichever of the theme's
+/// on-accent white or [_menuInk] contrasts more with the fill instead, so the
+/// row stays legible against every menu hue in both themes.
+Color _onMenuAccent(AppThemeColors colors, Color fill) {
+  final luminance = fill.computeLuminance();
+  final contrastWithWhite = 1.05 / (luminance + 0.05);
+  final contrastWithInk = (luminance + 0.05) / 0.05;
+  return contrastWithWhite >= contrastWithInk ? colors.onAccent : _menuInk;
 }

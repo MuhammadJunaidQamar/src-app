@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:src/model/model.dart';
+import 'package:src/theme/app_theme_colors.dart';
 import 'package:src/utils/constants/constants.dart';
 import 'package:src/view_model/view_model.dart';
 
@@ -100,10 +101,15 @@ class _LineChartWidget2State extends State<LineChartWidget2> {
     return maxY + 5;
   }
 
-  Widget bottomTitleWidgets(double value, TitleMeta meta, double chartWidth) {
+  Widget bottomTitleWidgets(
+    double value,
+    TitleMeta meta,
+    double chartWidth,
+    Color labelColor,
+  ) {
     final style = TextStyle(
       fontWeight: FontWeight.bold,
-      color: Colors.white,
+      color: labelColor,
       fontFamily: 'Digital',
       fontSize: 18 * chartWidth / 500,
     );
@@ -139,6 +145,15 @@ class _LineChartWidget2State extends State<LineChartWidget2> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
+    // Captured here so the fl_chart closures below never need a BuildContext.
+    final axisLabelColor = colors.textSecondary;
+    final gridLineColor = colors.gridLine;
+    final tooltipColor = colors.surfaceElevated;
+    final tooltipBorderColor = colors.cardBorder;
+    // Brand series hues, darkened on a light canvas so they stay legible.
+    final seriesColors = gradientColors.map(colors.tuneAccent).toList();
+
     return AspectRatio(
       aspectRatio: 1.7,
       child: Padding(
@@ -152,7 +167,7 @@ class _LineChartWidget2State extends State<LineChartWidget2> {
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(32),
               ),
-              color: Color.fromARGB(255, 2, 12, 41),
+              color: colors.surfaceElevated,
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Column(
@@ -161,7 +176,7 @@ class _LineChartWidget2State extends State<LineChartWidget2> {
                     Text(
                       widget.type,
                       style: TextStyle(
-                        color: Color(0xff68737d),
+                        color: colors.textSecondary,
                         fontWeight: FontWeight.bold,
                         fontSize: 16,
                       ),
@@ -184,18 +199,18 @@ class _LineChartWidget2State extends State<LineChartWidget2> {
                             horizontalInterval: 1,
                             verticalInterval: 1,
                             getDrawingHorizontalLine: (value) => FlLine(
-                              color: const Color(0xff37434d),
+                              color: gridLineColor,
                               strokeWidth: 1,
                             ),
                             getDrawingVerticalLine: (value) => FlLine(
-                              color: const Color(0xff37434d),
+                              color: gridLineColor,
                               strokeWidth: 1,
                             ),
                           ),
                           borderData: FlBorderData(
                             show: true,
                             border: Border.all(
-                              color: const Color(0xff37434d),
+                              color: colors.cardBorder,
                               width: 1,
                             ),
                           ),
@@ -205,7 +220,9 @@ class _LineChartWidget2State extends State<LineChartWidget2> {
                               fitInsideVertically: true,
                               fitInsideHorizontally: true,
                               maxContentWidth: 150,
-                              getTooltipColor: (touchedSpot) => Colors.black,
+                              getTooltipColor: (touchedSpot) => tooltipColor,
+                              tooltipBorder:
+                                  BorderSide(color: tooltipBorderColor),
                               getTooltipItems: (touchedSpots) {
                                 return touchedSpots
                                     .map((LineBarSpot touchedSpot) {
@@ -246,6 +263,7 @@ class _LineChartWidget2State extends State<LineChartWidget2> {
                                     value,
                                     meta,
                                     constraints.maxWidth,
+                                    axisLabelColor,
                                   );
                                 },
                                 reservedSize: 30,
@@ -272,7 +290,7 @@ class _LineChartWidget2State extends State<LineChartWidget2> {
                               spots: _spots,
                               isCurved: true,
                               gradient: LinearGradient(
-                                colors: gradientColors,
+                                colors: seriesColors,
                               ),
                               barWidth: 5,
                               isStrokeCapRound: true,
@@ -280,8 +298,9 @@ class _LineChartWidget2State extends State<LineChartWidget2> {
                               belowBarData: BarAreaData(
                                 show: true,
                                 gradient: LinearGradient(
-                                  colors: gradientColors
-                                      .map((color) => color.withOpacity(0.3))
+                                  colors: seriesColors
+                                      .map((color) =>
+                                          color.withValues(alpha: 0.3))
                                       .toList(),
                                 ),
                               ),

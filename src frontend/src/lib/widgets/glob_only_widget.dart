@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:src/model/model.dart';
+import 'package:src/theme/app_theme_colors.dart';
 import 'package:src/view_model/view_model.dart';
 import 'package:three_js/three_js.dart' as three;
 
@@ -28,6 +29,11 @@ class _GlobOnlyWidgetState extends State<GlobOnlyWidget>
   three.ThreeJS? _js;
   three.Object3D? _planeRoot;
   Size? _viewerSize;
+
+  /// Brightness the *current* viewer/scene was lit for. The light rig is baked
+  /// into the scene at setup time, so a theme flip has to rebuild the viewer.
+  /// Never read from initState — [build] keeps it in sync.
+  bool _viewerIsDark = true;
   double _dpr = 1.0;
   bool _sceneReady = false;
   String? _error;
@@ -128,14 +134,28 @@ class _GlobOnlyWidgetState extends State<GlobOnlyWidget>
 
     tj.scene = three.Scene();
     // Keep transparent so the dashboard camera feed shows through.
-    tj.scene.add(three.HemisphereLight(0xb8c6ff, 0x1a2233, 0.8));
-    tj.scene.add(three.AmbientLight(0xffffff, 0.6));
-    tj.scene.add(
-      three.DirectionalLight(0xffffff, 1.2)..position.setValues(4, 8, 6),
-    );
-    tj.scene.add(
-      three.DirectionalLight(0xaaccff, 0.5)..position.setValues(-4, 2, -3),
-    );
+    if (_viewerIsDark) {
+      // Night rig: cool sky, near-black ground bounce.
+      tj.scene.add(three.HemisphereLight(0xb8c6ff, 0x1a2233, 0.8));
+      tj.scene.add(three.AmbientLight(0xffffff, 0.6));
+      tj.scene.add(
+        three.DirectionalLight(0xffffff, 1.2)..position.setValues(4, 8, 6),
+      );
+      tj.scene.add(
+        three.DirectionalLight(0xaaccff, 0.5)..position.setValues(-4, 2, -3),
+      );
+    } else {
+      // Daylight rig: warm key light plus a bright ground term, otherwise the
+      // craft reads as a dark silhouette against the light canvas.
+      tj.scene.add(three.HemisphereLight(0xffffff, 0xd4dced, 1.15));
+      tj.scene.add(three.AmbientLight(0xffffff, 0.9));
+      tj.scene.add(
+        three.DirectionalLight(0xfff2de, 1.5)..position.setValues(4, 8, 6),
+      );
+      tj.scene.add(
+        three.DirectionalLight(0xdceaff, 0.85)..position.setValues(-4, 2, -3),
+      );
+    }
 
     try {
       if (widget.showPlane) {
@@ -186,9 +206,10 @@ class _GlobOnlyWidgetState extends State<GlobOnlyWidget>
     }
   }
 
-  void _rebuildViewer(Size size, double dpr) {
+  void _rebuildViewer(Size size, double dpr, bool isDark) {
     _viewerSize = size;
     _dpr = dpr;
+    _viewerIsDark = isDark;
     _watchdog?.cancel();
     _setupGen++;
     _js?.dispose();
@@ -219,15 +240,20 @@ class _GlobOnlyWidgetState extends State<GlobOnlyWidget>
     });
   }
 
-  void _ensureViewer(Size size, double dpr) {
-    if (_sameSize(_viewerSize, size) && _js != null && _error == null) return;
-    _rebuildViewer(size, dpr);
+  void _ensureViewer(Size size, double dpr, bool isDark) {
+    if (_sameSize(_viewerSize, size) &&
+        _js != null &&
+        _error == null &&
+        _viewerIsDark == isDark) {
+      return;
+    }
+    _rebuildViewer(size, dpr, isDark);
   }
 
   void _retry() {
     final size = _viewerSize;
     if (size == null) return;
-    _rebuildViewer(size, _dpr);
+    _rebuildViewer(size, _dpr, _viewerIsDark);
     if (mounted) setState(() {});
   }
 
@@ -244,7 +270,7 @@ class _GlobOnlyWidgetState extends State<GlobOnlyWidget>
         !_sceneReady &&
         _viewerSize != null) {
       // GPU context often stalls after app switch — recreate the viewer.
-      _rebuildViewer(_viewerSize!, _dpr);
+      _rebuildViewer(_viewerSize!, _dpr, _viewerIsDark);
       setState(() {});
     }
   }
@@ -279,11 +305,16 @@ class _GlobOnlyWidgetState extends State<GlobOnlyWidget>
 
   @override
   Widget build(BuildContext context) {
+    // Read the theme here (never in initState) so a brightness flip rebuilds
+    // this widget and, through _ensureViewer, relights the scene.
+    final colors = context.colors;
+    final isDark = colors.isDark;
+
     return LayoutBuilder(
       builder: (ctx, con) {
         final size = Size(con.maxWidth, con.maxHeight);
         if (size.width >= _minPx && size.height >= _minPx) {
-          _ensureViewer(size, MediaQuery.of(ctx).devicePixelRatio);
+          _ensureViewer(size, MediaQuery.of(ctx).devicePixelRatio, isDark);
         }
         final js = _js;
 
@@ -303,7 +334,7 @@ class _GlobOnlyWidgetState extends State<GlobOnlyWidget>
             if (_error != null)
               Positioned.fill(
                 child: Material(
-                  color: Colors.black54,
+                  color: colors.scrim,
                   child: InkWell(
                     onTap: _retry,
                     child: Center(
@@ -312,8 +343,8 @@ class _GlobOnlyWidgetState extends State<GlobOnlyWidget>
                         child: Text(
                           _error!,
                           textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            color: Colors.white,
+                          style: TextStyle(
+                            color: colors.onScrim,
                             fontSize: 12,
                           ),
                         ),

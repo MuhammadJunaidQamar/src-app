@@ -6,8 +6,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:src/model/model.dart';
+import 'package:src/theme/app_theme_colors.dart';
 import 'package:src/utils/connection/connection_config.dart';
-import 'package:src/utils/constants/constants.dart';
 import 'package:src/utils/routing/routes.dart';
 import 'package:src/view_model/view_model.dart';
 import 'package:src/widgets/custom_card_widget.dart';
@@ -261,10 +261,11 @@ class _GroundStationPairingScreenState extends State<GroundStationPairingScreen>
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     final mode = ConnectionConfig.selectedMode;
     if (mode == ConnectionMode.broadcast || mode == ConnectionMode.simulation) {
       return Scaffold(
-        backgroundColor: AppColors.backgroundColor,
+        backgroundColor: colors.background,
         body: Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -275,7 +276,7 @@ class _GroundStationPairingScreenState extends State<GroundStationPairingScreen>
                 mode == ConnectionMode.simulation
                     ? 'Starting simulation…'
                     : 'Connecting…',
-                style: const TextStyle(color: AppColors.mainTextColor2),
+                style: TextStyle(color: colors.textSecondary),
               ),
             ],
           ),
@@ -284,9 +285,9 @@ class _GroundStationPairingScreenState extends State<GroundStationPairingScreen>
     }
 
     return Scaffold(
-      backgroundColor: AppColors.backgroundColor,
+      backgroundColor: colors.background,
       appBar: AppBar(
-        backgroundColor: AppColors.blackPearlColor,
+        backgroundColor: colors.surfaceElevated,
         title: const Text('Verify ground station'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
@@ -304,17 +305,17 @@ class _GroundStationPairingScreenState extends State<GroundStationPairingScreen>
           padding: const EdgeInsets.all(20),
           children: [
             CustomCard(
-              color: AppColors.blackPearlColor.withValues(alpha: 0.85),
+              color: colors.surfaceElevated,
               padding: const EdgeInsets.all(18),
               margin: EdgeInsets.zero,
               expandChild: true,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     'Pairing code',
                     style: TextStyle(
-                      color: AppColors.contentColorWhite,
+                      color: colors.textStrong,
                       fontSize: 18,
                       fontWeight: FontWeight.w600,
                     ),
@@ -322,8 +323,8 @@ class _GroundStationPairingScreenState extends State<GroundStationPairingScreen>
                   const SizedBox(height: 8),
                   Text(
                     _instructionsText(),
-                    style: const TextStyle(
-                      color: AppColors.mainTextColor2,
+                    style: TextStyle(
+                      color: colors.textSecondary,
                       fontSize: 13,
                       height: 1.4,
                     ),
@@ -335,10 +336,10 @@ class _GroundStationPairingScreenState extends State<GroundStationPairingScreen>
               const SizedBox(height: 16),
               Row(
                 children: [
-                  const Text(
+                  Text(
                     'Nearby ground stations',
                     style: TextStyle(
-                      color: AppColors.contentColorWhite,
+                      color: colors.textStrong,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -363,11 +364,11 @@ class _GroundStationPairingScreenState extends State<GroundStationPairingScreen>
                         ? 'Tap Scan to open the browser Bluetooth picker and '
                             'choose your CanSat-GS.'
                         : 'No CanSat-GS found. Power on the board and tap Scan.',
-                    style: const TextStyle(color: AppColors.mainTextColor3),
+                    style: TextStyle(color: colors.textTertiary),
                   ),
                 )
               else
-                ..._devices.map(_deviceTile),
+                ..._devices.map((r) => _deviceTile(r, colors)),
             ],
             if (ConnectionConfig.selectedMode ==
                 ConnectionMode.routerGroundStation) ...[
@@ -385,10 +386,10 @@ class _GroundStationPairingScreenState extends State<GroundStationPairingScreen>
               else ...[
                 Row(
                   children: [
-                    const Text(
+                    Text(
                       'Ground station IP',
                       style: TextStyle(
-                        color: AppColors.contentColorWhite,
+                        color: colors.textStrong,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -410,21 +411,20 @@ class _GroundStationPairingScreenState extends State<GroundStationPairingScreen>
                   inputFormatters: [
                     FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
                   ],
-                  style: const TextStyle(
-                    color: AppColors.contentColorWhite,
+                  style: TextStyle(
+                    color: colors.textStrong,
                     fontSize: 18,
                     letterSpacing: 1.5,
                   ),
                   textAlign: TextAlign.center,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     hintText: '192.168.1.42',
-                    hintStyle: TextStyle(color: AppColors.mainTextColor3),
+                    hintStyle: TextStyle(color: colors.textTertiary),
                     enabledBorder: OutlineInputBorder(
-                      borderSide: BorderSide(color: AppColors.borderColor),
+                      borderSide: BorderSide(color: colors.border),
                     ),
                     focusedBorder: OutlineInputBorder(
-                      borderSide:
-                          BorderSide(color: AppColors.spanishSkyBlueColor),
+                      borderSide: BorderSide(color: colors.link),
                     ),
                   ),
                 ),
@@ -437,21 +437,21 @@ class _GroundStationPairingScreenState extends State<GroundStationPairingScreen>
               keyboardType: TextInputType.number,
               maxLength: 6,
               inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              style: const TextStyle(
-                color: AppColors.contentColorWhite,
+              style: TextStyle(
+                color: colors.textStrong,
                 fontSize: 28,
                 letterSpacing: 8,
               ),
               textAlign: TextAlign.center,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 counterText: '',
                 hintText: '000000',
-                hintStyle: TextStyle(color: AppColors.mainTextColor3),
+                hintStyle: TextStyle(color: colors.textTertiary),
                 enabledBorder: OutlineInputBorder(
-                  borderSide: BorderSide(color: AppColors.borderColor),
+                  borderSide: BorderSide(color: colors.border),
                 ),
                 focusedBorder: OutlineInputBorder(
-                  borderSide: BorderSide(color: AppColors.spanishSkyBlueColor),
+                  borderSide: BorderSide(color: colors.link),
                 ),
               ),
             ),
@@ -459,7 +459,7 @@ class _GroundStationPairingScreenState extends State<GroundStationPairingScreen>
               const SizedBox(height: 12),
               Text(
                 _error!,
-                style: const TextStyle(color: Colors.redAccent, fontSize: 13),
+                style: TextStyle(color: colors.danger, fontSize: 13),
               ),
             ],
             const SizedBox(height: 20),
@@ -468,16 +468,16 @@ class _GroundStationPairingScreenState extends State<GroundStationPairingScreen>
               child: ElevatedButton(
                 onPressed: _busy ? null : _verifyAndConnect,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.mediumSeaGreenColor,
-                  foregroundColor: Colors.white,
+                  backgroundColor: colors.positive,
+                  foregroundColor: colors.onAccent,
                 ),
                 child: _busy
-                    ? const SizedBox(
+                    ? SizedBox(
                         width: 22,
                         height: 22,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
-                          color: Colors.white,
+                          color: colors.onAccent,
                         ),
                       )
                     : const Text(
@@ -495,41 +495,35 @@ class _GroundStationPairingScreenState extends State<GroundStationPairingScreen>
     );
   }
 
-  Widget _deviceTile(ScanResult r) {
+  Widget _deviceTile(ScanResult r, AppThemeColors colors) {
     final device = r.device;
     final name = device.platformName.isEmpty ? 'Unknown' : device.platformName;
     final selected = _selectedDevice?.remoteId == device.remoteId;
 
     return Card(
-      color: selected
-          ? AppColors.blackPearlColor
-          : AppColors.itemsBackground.withValues(alpha: 0.7),
+      color: selected ? colors.surfaceStrong : colors.surfaceMuted,
       margin: const EdgeInsets.only(bottom: 8),
       child: ListTile(
         leading: Icon(
           Icons.bluetooth,
-          color: selected
-              ? AppColors.tropicalIndigoColor
-              : AppColors.mainTextColor2,
+          color: selected ? colors.violet : colors.textSecondary,
         ),
         title: Text(
           name,
           style: TextStyle(
-            color: selected
-                ? AppColors.contentColorWhite
-                : AppColors.mainTextColor2,
+            color: selected ? colors.textStrong : colors.textSecondary,
             fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
           ),
         ),
         subtitle: Text(
           '${device.remoteId.str} · ${r.rssi} dBm',
-          style: const TextStyle(
-            color: AppColors.mainTextColor3,
+          style: TextStyle(
+            color: colors.textTertiary,
             fontSize: 11,
           ),
         ),
         trailing: selected
-            ? const Icon(Icons.check_circle, color: AppColors.mediumSeaGreenColor)
+            ? Icon(Icons.check_circle, color: colors.positive)
             : null,
         onTap: _busy
             ? null

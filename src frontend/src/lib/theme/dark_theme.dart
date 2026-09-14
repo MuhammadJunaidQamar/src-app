@@ -1,11 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:src/utils/desktop_interaction.dart';
+import 'package:src/theme/app_theme.dart';
+import 'package:src/theme/app_theme_colors.dart';
 
-ThemeData darkTheme(BuildContext context) {
-  return applyDesktopInteractionTheme(
-    ThemeData(
-      useMaterial3: true,
-      brightness: Brightness.dark,
-    ),
-  );
-}
+ThemeData darkTheme(BuildContext context) => buildAppTheme(AppThemeColors.dark);

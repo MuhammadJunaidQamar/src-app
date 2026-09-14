@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:src/theme/app_theme_colors.dart';
 import 'package:src/utils/constants/constants.dart';
 import 'package:src/utils/global/global.dart';
 import 'package:src/utils/responsive.dart';
@@ -9,14 +10,15 @@ class HeaderWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
     return Row(
       children: [
         if (!Responsive.isDesktop(context))
           IconButton(
             onPressed: () => Scaffold.of(context).openDrawer(),
-            icon: const Icon(
+            icon: Icon(
               Icons.menu,
-              color: Colors.grey,
+              color: colors.textSecondary,
               size: 25,
             ),
           ),
@@ -28,9 +30,9 @@ class HeaderWidget extends StatelessWidget {
         if (Responsive.isMobile(context) || Global.pageIdx != 0)
           IconButton(
             onPressed: () => Scaffold.of(context).openEndDrawer(),
-            icon: const Icon(
+            icon: Icon(
               Icons.insert_chart_outlined_sharp,
-              color: Colors.grey,
+              color: colors.textSecondary,
               size: 25,
             ),
           ),

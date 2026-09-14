@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:src/model/model.dart';
+import 'package:src/theme/app_theme_colors.dart';
 import 'package:src/utils/constants/constants.dart';
 import 'package:src/view_model/view_model.dart';
 
@@ -104,10 +105,16 @@ class _LineChartSample5State extends State<LineChartSample5> {
     }
   }
 
-  Widget bottomTitleWidgets(double value, TitleMeta meta, double chartWidth) {
+  /// [titleColor] is resolved in [build] so the label follows the active theme.
+  Widget bottomTitleWidgets(
+    double value,
+    TitleMeta meta,
+    double chartWidth,
+    Color titleColor,
+  ) {
     final style = TextStyle(
       fontWeight: FontWeight.bold,
-      color: AppColors.contentColorPink,
+      color: titleColor,
       fontFamily: 'Digital',
       fontSize: 18 * chartWidth / 500,
     );
@@ -146,6 +153,14 @@ class _LineChartSample5State extends State<LineChartSample5> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.colors;
+    // Series hues stay, but they are tuned so they keep their contrast on the
+    // light canvas (no-op in dark mode).
+    final gradientColor1 = colors.tuneAccent(widget.gradientColor1);
+    final gradientColor2 = colors.tuneAccent(widget.gradientColor2);
+    final gradientColor3 = colors.tuneAccent(widget.gradientColor3);
+    final bottomTitleColor = colors.tuneAccent(AppColors.contentColorPink);
+
     final lineBarsData = [
       LineChartBarData(
         showingIndicators: showingTooltipOnSpots,
@@ -157,18 +172,18 @@ class _LineChartSample5State extends State<LineChartSample5> {
           show: true,
           gradient: LinearGradient(
             colors: [
-              widget.gradientColor1.withOpacity(0.4),
-              widget.gradientColor2.withOpacity(0.4),
-              widget.gradientColor3.withOpacity(0.4),
+              gradientColor1.withOpacity(0.4),
+              gradientColor2.withOpacity(0.4),
+              gradientColor3.withOpacity(0.4),
             ],
           ),
         ),
         dotData: const FlDotData(show: false),
         gradient: LinearGradient(
           colors: [
-            widget.gradientColor1,
-            widget.gradientColor2,
-            widget.gradientColor3,
+            gradientColor1,
+            gradientColor2,
+            gradientColor3,
           ],
           stops: const [0.1, 0.4, 0.9],
         ),
@@ -226,10 +241,21 @@ class _LineChartSample5State extends State<LineChartSample5> {
                     ),
                     borderData: FlBorderData(
                       show: true,
-                      border:
-                          Border.all(color: AppColors.mainTextColor1, width: 1),
+                      border: Border.all(color: colors.border, width: 1),
                     ),
-                    gridData: FlGridData(show: true),
+                    gridData: FlGridData(
+                      show: true,
+                      getDrawingHorizontalLine: (value) => FlLine(
+                        color: colors.gridLine,
+                        strokeWidth: 0.4,
+                        dashArray: const [8, 4],
+                      ),
+                      getDrawingVerticalLine: (value) => FlLine(
+                        color: colors.gridLine,
+                        strokeWidth: 0.4,
+                        dashArray: const [8, 4],
+                      ),
+                    ),
                     titlesData: FlTitlesData(
                       leftTitles:
                           AxisTitles(sideTitles: SideTitles(showTitles: true)),
@@ -238,7 +264,11 @@ class _LineChartSample5State extends State<LineChartSample5> {
                           showTitles: true,
                           reservedSize: 40,
                           getTitlesWidget: (value, meta) => bottomTitleWidgets(
-                              value, meta, constraints.maxWidth),
+                            value,
+                            meta,
+                            constraints.maxWidth,
+                            bottomTitleColor,
+                          ),
                         ),
                       ),
                     ),

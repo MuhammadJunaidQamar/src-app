@@ -7,8 +7,8 @@ import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart' as mb;
 import 'package:src/model/model.dart';
+import 'package:src/theme/app_theme_colors.dart';
 import 'package:src/utils/app_snackbar.dart';
-import 'package:src/utils/constants/constants.dart';
 import 'package:src/utils/map_position_smoother.dart';
 import 'package:src/utils/mapbox_init.dart';
 import 'package:src/utils/mapbox_map_config.dart';
@@ -61,11 +61,47 @@ class LiveGeoLocationOnMobileWidgetState
   bool _ignoreCameraEvents = false;
   Timer? _cameraGuardTimer;
 
+  /// Basemap lighting, resolved from the app theme in [didChangeDependencies]
+  /// (never from [initState] — the theme is not available there).
+  String _lightPreset = MapboxMapConfig.basemapLightPreset;
+  bool _styleLoaded = false;
+
   @override
   void initState() {
     super.initState();
     _ticker = createTicker(_onTick)..start();
     _subscribeToData();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final preset = MapboxMapConfig.lightPresetFor(Theme.of(context).brightness);
+    if (preset == _lightPreset) return;
+    _lightPreset = preset;
+    unawaited(_applyBasemapLightPreset());
+  }
+
+  /// The map style imports Mapbox Standard as `basemap`; its `lightPreset`
+  /// config decides whether the world is lit for day or dusk.
+  Future<void> _applyBasemapLightPreset() async {
+    final map = mapboxMap;
+    if (map == null || !_styleLoaded) return;
+    try {
+      await map.style.setStyleImportConfigProperty(
+        'basemap',
+        'lightPreset',
+        _lightPreset,
+      );
+    } catch (_) {
+      // Style may not expose a configurable Standard basemap import — the map
+      // keeps its authored lighting rather than failing.
+    }
+  }
+
+  void _onStyleLoaded(mb.StyleLoadedEventData data) {
+    _styleLoaded = true;
+    unawaited(_applyBasemapLightPreset());
   }
 
   void _subscribeToData() {
@@ -233,6 +269,7 @@ class LiveGeoLocationOnMobileWidgetState
           mapOptions: mb.MapOptions(pixelRatio: 1.0),
           onMapCreated: _onMapCreated,
           styleUri: MapboxMapConfig.styleUri,
+          onStyleLoadedListener: _onStyleLoaded,
           onTapListener: _onTap,
           // Pan stops follow; zoom pauses follow only for the gesture.
           onScrollListener: _onUserPan,
@@ -241,9 +278,9 @@ class LiveGeoLocationOnMobileWidgetState
           onMapIdleListener: _onMapIdle,
         ),
         if (_isLoading)
-          const ColoredBox(
-            color: AppColors.eigengrauColor,
-            child: Center(child: CircularProgressIndicator.adaptive()),
+          ColoredBox(
+            color: context.colors.background,
+            child: const Center(child: CircularProgressIndicator.adaptive()),
           ),
         Positioned(
           top: 12,

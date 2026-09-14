@@ -69,7 +69,7 @@ bool sdCardAvailable = false; // Flag to track SD card status
 //   Router GS: "GS MAC      : XX:XX:..."  (STA MAC)
 //   Wi-Fi GS : "GS MAC (AP) : XX:XX:..."  (AP MAC — different from STA!)
 //   BLE GS   : "[BOOT] MAC ..."
-uint8_t broadcastAddress[] = {0x28, 0x56, 0x2f, 0x49, 0xc0, 0xc8}; //28:56:2f:49:c0:c8
+uint8_t broadcastAddress[] = {0x28, 0x56, 0x2f, 0x49, 0xd3, 0x7c}; //28:56:2f:49:c0:c8
 // uint8_t broadcastAddress[] = {0x6c, 0xc8, 0x40, 0x44, 0x94, 0xb8};  //gs1
 //uint8_t broadcastAddress[] = {0x44, 0x1D, 0x64, 0xFB, 0xD0, 0x0C};  //gs1
 //44:1d:64:f2:d2:e0

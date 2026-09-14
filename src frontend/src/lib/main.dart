@@ -119,7 +119,7 @@ class _MyAppState extends State<MyApp> {
       title: AppText.appName,
       theme: lightTheme(context),
       darkTheme: darkTheme(context),
-      themeMode: ThemeMode.system,
+      themeMode: themeManager.themeMode,
       initialRoute: RouteName.connectionModeScreen,
       onGenerateRoute: Routes.generateRoute,
       builder: (context, child) {

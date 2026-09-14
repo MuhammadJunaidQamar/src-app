@@ -1,7 +1,7 @@
 import 'package:bitsdojo_window/bitsdojo_window.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:src/utils/constants/constants.dart';
+import 'package:src/theme/app_theme_colors.dart';
 import 'package:src/widgets/window_buttons_widget.dart';
 
 /// Custom title bar + min/max/close for Windows/macOS/Linux (bitsdojo_window).
@@ -23,8 +23,10 @@ class DesktopWindowShell extends StatelessWidget {
   Widget build(BuildContext context) {
     if (!isActive) return child;
 
+    final colors = context.colors;
+
     return WindowBorder(
-      color: AppColors.cardBorderColor,
+      color: colors.cardBorder,
       width: 2,
       child: Column(
         children: [
@@ -33,8 +35,8 @@ class DesktopWindowShell extends StatelessWidget {
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
-                    AppColors.blackPearlColor,
-                    AppColors.backgroundColor,
+                    colors.surfaceElevated,
+                    colors.background,
                   ],
                   tileMode: TileMode.clamp,
                   begin: Alignment.centerLeft,
@@ -43,16 +45,19 @@ class DesktopWindowShell extends StatelessWidget {
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.battery_unknown_outlined),
-                  const Text(
+                  Icon(
+                    Icons.battery_unknown_outlined,
+                    color: colors.textMuted,
+                  ),
+                  Text(
                     '56%',
                     style: TextStyle(
                       fontSize: 10,
-                      color: AppColors.lightSlateGrey,
+                      color: colors.textMuted,
                     ),
                   ),
                   Expanded(child: MoveWindow()),
-                  WindowButtonsWidget(),
+                  const WindowButtonsWidget(),
                 ],
               ),
             ),

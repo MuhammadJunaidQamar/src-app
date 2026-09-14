@@ -92,6 +92,14 @@
         const DEFAULT_BEARING = 0;
         const DEFAULT_PITCH = 30;
 
+        // Live basemap import config; setLightPreset() mutates it when the
+        // Flutter app flips between light and dark.
+        let basemapConfig = {
+            lightPreset: DEFAULT_LIGHT_PRESET,
+            theme: DEFAULT_THEME,
+            show3dObjects: DEFAULT_SHOW_3D_OBJECTS,
+        };
+
         // Interruptible chase: display eases toward the latest GPS target.
         // New samples retarget from the current display point (no snap/jitter).
         const smoother = {
@@ -271,12 +279,30 @@
             };
         }
 
-        function applyBasemapConfig(config) {
+        // Keep the HTML chrome (page background, loading overlay) in step with
+        // the basemap lighting so a light UI never flashes a night-dark page.
+        function applyPageChrome() {
+            const light = basemapConfig.lightPreset === 'day' ||
+                basemapConfig.lightPreset === 'dawn';
+            const bg = light ? '#eef2f8' : '#10151d';
+            const fg = light ? '#1e2836' : '#bfc7d2';
+            document.body.style.backgroundColor = bg;
+            const mapEl = document.getElementById('map');
+            if (mapEl) mapEl.style.backgroundColor = bg;
+            const loading = document.getElementById('loading');
+            if (loading) {
+                loading.style.backgroundColor = bg;
+                loading.style.color = fg;
+            }
+        }
+
+        function applyBasemapConfig() {
+            applyPageChrome();
             if (!map || typeof map.setConfigProperty !== 'function') return;
             try {
-                map.setConfigProperty('basemap', 'lightPreset', config.lightPreset);
-                map.setConfigProperty('basemap', 'theme', config.theme);
-                map.setConfigProperty('basemap', 'show3dObjects', config.show3dObjects);
+                map.setConfigProperty('basemap', 'lightPreset', basemapConfig.lightPreset);
+                map.setConfigProperty('basemap', 'theme', basemapConfig.theme);
+                map.setConfigProperty('basemap', 'show3dObjects', basemapConfig.show3dObjects);
             } catch (e) {
                 console.warn('Failed to apply basemap config', e);
             }
@@ -324,6 +350,14 @@
                 if (map) map.resize();
             },
 
+            // Called from Flutter when the app theme flips: relight the
+            // basemap ('day' | 'dawn' | 'dusk' | 'night').
+            setLightPreset(preset) {
+                if (!preset) return;
+                basemapConfig.lightPreset = preset;
+                applyBasemapConfig();
+            },
+
             // Mouse wheel zoom, forwarded from Flutter. Zoom does not break
             // follow — the camera stays locked on the satellite at the new zoom.
             wheelZoom(deltaY, ctrlKey) {
@@ -361,6 +395,8 @@
             },
 
             _boot(token, styleUri, iconUrl, lng, lat, lightPreset, theme, show3dObjects) {
+                basemapConfig = { lightPreset, theme, show3dObjects };
+                applyPageChrome();
                 if (!window.mapboxgl) {
                     showLoadError('Mapbox GL failed to download. Check internet access.');
                     return;
@@ -407,11 +443,10 @@
                     'bottom-left',
                 );
 
-                const basemapConfig = { lightPreset, theme, show3dObjects };
-                map.on('style.load', () => applyBasemapConfig(basemapConfig));
+                map.on('style.load', () => applyBasemapConfig());
 
                 map.on('load', () => {
-                    applyBasemapConfig(basemapConfig);
+                    applyBasemapConfig();
                     map.resize();
                     document.getElementById('loading').style.display = 'none';
                     marker = createMarker(lng, lat, iconUrl);

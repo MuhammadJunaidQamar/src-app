@@ -21,24 +21,32 @@ WidgetStateProperty<MouseCursor> get clickCursorState =>
       return SystemMouseCursors.click;
     });
 
+/// Adds a pointer cursor to interactive components on desktop, *merging* into
+/// whatever the caller already configured so palette-driven component themes
+/// survive.
 ThemeData applyDesktopInteractionTheme(ThemeData theme) {
   if (!isDesktopPlatform) return theme;
 
-  final interactiveButtonStyle = ButtonStyle(
-    mouseCursor: clickCursorState,
-  );
+  ButtonStyle withCursor(ButtonStyle? style) =>
+      (style ?? const ButtonStyle()).copyWith(mouseCursor: clickCursorState);
 
   return theme.copyWith(
-    iconButtonTheme: IconButtonThemeData(style: interactiveButtonStyle),
-    elevatedButtonTheme: ElevatedButtonThemeData(style: interactiveButtonStyle),
-    textButtonTheme: TextButtonThemeData(style: interactiveButtonStyle),
-    outlinedButtonTheme: OutlinedButtonThemeData(style: interactiveButtonStyle),
-    filledButtonTheme: FilledButtonThemeData(style: interactiveButtonStyle),
-    listTileTheme: ListTileThemeData(mouseCursor: clickCursorState),
-    switchTheme: SwitchThemeData(mouseCursor: clickCursorState),
-    checkboxTheme: CheckboxThemeData(mouseCursor: clickCursorState),
-    radioTheme: RadioThemeData(mouseCursor: clickCursorState),
-    menuButtonTheme: MenuButtonThemeData(style: interactiveButtonStyle),
+    iconButtonTheme:
+        IconButtonThemeData(style: withCursor(theme.iconButtonTheme.style)),
+    elevatedButtonTheme: ElevatedButtonThemeData(
+        style: withCursor(theme.elevatedButtonTheme.style)),
+    textButtonTheme:
+        TextButtonThemeData(style: withCursor(theme.textButtonTheme.style)),
+    outlinedButtonTheme: OutlinedButtonThemeData(
+        style: withCursor(theme.outlinedButtonTheme.style)),
+    filledButtonTheme:
+        FilledButtonThemeData(style: withCursor(theme.filledButtonTheme.style)),
+    listTileTheme: theme.listTileTheme.copyWith(mouseCursor: clickCursorState),
+    switchTheme: theme.switchTheme.copyWith(mouseCursor: clickCursorState),
+    checkboxTheme: theme.checkboxTheme.copyWith(mouseCursor: clickCursorState),
+    radioTheme: theme.radioTheme.copyWith(mouseCursor: clickCursorState),
+    menuButtonTheme:
+        MenuButtonThemeData(style: withCursor(theme.menuButtonTheme.style)),
   );
 }
 

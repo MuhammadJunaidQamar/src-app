@@ -2,11 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:src/data/project_gallery_data.dart';
 import 'package:src/data/team_member_data.dart';
+import 'package:src/theme/app_theme_colors.dart';
 import 'package:src/utils/constants/constants.dart';
 import 'package:src/utils/responsive.dart';
 import 'package:src/widgets/custom_card_widget.dart';
 import 'package:src/widgets/header_widget.dart';
 import 'package:src/widgets/team_member_card.dart';
+
+/// Letterbox behind the gallery artwork. The shipped SVGs are drawn with white
+/// strokes, so this stays dark in both themes (the overlaid caption uses
+/// `context.colors.onScrim`, which is white in both).
+const Color _kGalleryBackdrop = AppColors.eigengrauColor;
 
 class ProjectInfoScreen extends StatelessWidget {
   const ProjectInfoScreen({super.key});
@@ -154,7 +160,7 @@ class _SectionTitle extends StatelessWidget {
           Text(
             title,
             style: TextStyle(
-              color: AppColors.mainTextColor1,
+              color: context.colors.textStrong,
               fontSize: isMobile ? 22 : 26,
               fontWeight: FontWeight.w700,
             ),
@@ -162,8 +168,8 @@ class _SectionTitle extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             subtitle,
-            style: const TextStyle(
-              color: AppColors.lightSlateGrey,
+            style: TextStyle(
+              color: context.colors.textMuted,
               fontSize: 13,
             ),
           ),
@@ -191,7 +197,7 @@ class _HeroGalleryCard extends StatelessWidget {
             minWidth: width * 7 / 8,
             child: item.imagePath != null
                 ? _GalleryImage(item: item)
-                : const ColoredBox(color: AppColors.eigengrauColor),
+                : const ColoredBox(color: _kGalleryBackdrop),
           ),
         ),
         Padding(
@@ -205,7 +211,7 @@ class _HeroGalleryCard extends StatelessWidget {
                 overflow: TextOverflow.clip,
                 softWrap: false,
                 style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                      color: Colors.white,
+                      color: context.colors.onScrim,
                     ),
               ),
               const SizedBox(height: 10),
@@ -214,7 +220,7 @@ class _HeroGalleryCard extends StatelessWidget {
                 overflow: TextOverflow.clip,
                 softWrap: false,
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Colors.white,
+                      color: context.colors.onScrim,
                     ),
               ),
             ],
@@ -235,12 +241,12 @@ class _GalleryImage extends StatelessWidget {
     final path = item.imagePath!;
     if (item.isSvg) {
       return ColoredBox(
-        color: AppColors.eigengrauColor,
+        color: _kGalleryBackdrop,
         child: SvgPicture.asset(
           path,
           fit: BoxFit.contain,
           placeholderBuilder: (_) => const ColoredBox(
-            color: AppColors.eigengrauColor,
+            color: _kGalleryBackdrop,
           ),
         ),
       );
@@ -249,7 +255,7 @@ class _GalleryImage extends StatelessWidget {
       path,
       fit: BoxFit.cover,
       errorBuilder: (_, __, ___) => const ColoredBox(
-        color: AppColors.eigengrauColor,
+        color: _kGalleryBackdrop,
       ),
     );
   }

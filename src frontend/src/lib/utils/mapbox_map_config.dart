@@ -1,3 +1,5 @@
+import 'dart:ui' show Brightness;
+
 /// Shared Mapbox settings for native (mobile) and WebView (desktop) maps.
 class MapboxMapConfig {
   static const styleUri =
@@ -7,6 +9,12 @@ class MapboxMapConfig {
   static const basemapLightPreset = 'dusk';
   static const basemapTheme = 'default';
   static const basemapShow3dObjects = true;
+
+  /// Basemap lighting that matches the app theme. Mapbox Standard accepts
+  /// 'day' | 'dawn' | 'dusk' | 'night' for the `lightPreset` import config;
+  /// a night-lit basemap under a light UI reads as a broken page.
+  static String lightPresetFor(Brightness brightness) =>
+      brightness == Brightness.dark ? basemapLightPreset : 'day';
 
   static const defaultLatitude = 31.4469;
   static const defaultLongitude = 74.2682;
