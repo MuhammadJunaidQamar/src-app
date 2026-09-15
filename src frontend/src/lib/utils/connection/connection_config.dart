@@ -1,20 +1,20 @@
 import 'package:flutter/foundation.dart';
 
 /// How the app reaches telemetry (and optionally camera).
-/// Flash the matching ESP32 firmware before use — see [firmwareHint].
+/// Flash GS_ALL_PROTOCOLS.ino once; the app picks the transport at runtime.
 enum ConnectionMode {
   /// Backend / relay WebSocket + optional remote MJPEG URL.
-  /// Flash GROUND_STATION_BROADCAST.ino on the ESP32 that feeds USB Serial.
+  /// Ground station sends USB Serial into the Python relay.
   broadcast,
 
-  /// Phone joins ground-station Wi‑Fi AP — flash GROUND_STATION_WIFI.ino.
+  /// Phone joins the ground-station SoftAP (default SSID "CanSat-GS").
   directGroundStation,
 
   /// Ground station and phones join the same Wi‑Fi router; the app talks
-  /// straight to the station over the LAN — flash GROUND_STATION_ROUTER.ino.
+  /// straight to the station over the LAN.
   routerGroundStation,
 
-  /// Bluetooth — flash GROUND_STATION_BLE.ino.
+  /// Bluetooth GATT to the ground station.
   bleGroundStation,
 
   /// Built-in demo telemetry — no hardware required.
@@ -64,11 +64,9 @@ class ConnectionConfig {
 
   static bool get hasSelection => _selectedMode != null;
 
-  static bool get usesBle =>
-      _selectedMode == ConnectionMode.bleGroundStation;
+  static bool get usesBle => _selectedMode == ConnectionMode.bleGroundStation;
 
-  static bool get usesSimulation =>
-      _selectedMode == ConnectionMode.simulation;
+  static bool get usesSimulation => _selectedMode == ConnectionMode.simulation;
 
   static bool get usesWebSocket =>
       _selectedMode != null && !usesBle && !usesSimulation;
@@ -107,8 +105,7 @@ class ConnectionConfig {
         return _directEndpoints;
       case ConnectionMode.routerGroundStation:
         return ConnectionEndpoints(
-          telemetryWsUrl:
-              _routerHost.isEmpty ? '' : 'ws://$_routerHost:8765',
+          telemetryWsUrl: _routerHost.isEmpty ? '' : 'ws://$_routerHost:8765',
           // The router GS relays ESP-NOW camera packets as MJPEG on port 81.
           cameraStreamUrl:
               _routerHost.isEmpty ? '' : 'http://$_routerHost:81/stream',
@@ -141,28 +138,29 @@ class ConnectionConfig {
   static String modeSubtitle(ConnectionMode mode) {
     switch (mode) {
       case ConnectionMode.broadcast:
-        return 'WebSocket to your Python backend. Flash GROUND_STATION_BROADCAST.ino on the USB ground station.';
+        return 'WebSocket to your Python backend. Ground station feeds USB Serial into the relay.';
       case ConnectionMode.directGroundStation:
-        return 'Join AP "CanSat-GS", enter the 6-digit code from Serial. Flash GROUND_STATION_WIFI.ino.';
+        return 'Phone joins the ground-station Wi‑Fi AP, then pairs with the 6-digit Serial code.';
       case ConnectionMode.routerGroundStation:
         return 'Station and phones join the same Wi‑Fi router. Enter only the 6-digit Serial code — the app finds your station on the LAN.';
       case ConnectionMode.bleGroundStation:
-        return 'Pick your station in the list, enter the 6-digit Serial code. Flash GROUND_STATION_BLE.ino.';
+        return 'Pick your station in the list, then pair with the 6-digit Serial code.';
       case ConnectionMode.simulation:
         return 'Explore the dashboard with realistic dummy CanSat telemetry — no ESP32 or pairing needed.';
     }
   }
 
+  /// Short colored tip under each mode card (not a flash path — one sketch covers all).
   static String firmwareHint(ConnectionMode mode) {
     switch (mode) {
       case ConnectionMode.broadcast:
-        return 'Flash: esp32/GROUND_STATION_BROADCAST/GROUND_STATION_BROADCAST.ino → USB → Python relay';
+        return 'USB Serial → Python relay → WebSocket'; //!needs work
       case ConnectionMode.directGroundStation:
-        return 'Flash: esp32/GROUND_STATION_WIFI/GROUND_STATION_WIFI.ino';
+        return 'Join AP "CanSat-GS" (or your GS_AP_SSID) · enter code';
       case ConnectionMode.routerGroundStation:
-        return 'Flash: esp32/GROUND_STATION_ROUTER/GROUND_STATION_ROUTER.ino';
+        return 'Same Wi‑Fi as station · set GS_STA_SSID · enter code';
       case ConnectionMode.bleGroundStation:
-        return 'Flash: esp32/GROUND_STATION_BLE/GROUND_STATION_BLE.ino';
+        return 'Select station in list · enter 6-digit Serial code';
       case ConnectionMode.simulation:
         return 'No hardware or firmware required.';
     }

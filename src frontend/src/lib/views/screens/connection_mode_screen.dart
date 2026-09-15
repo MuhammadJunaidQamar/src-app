@@ -18,6 +18,9 @@ class ConnectionModeScreen extends StatefulWidget {
 class _ConnectionModeScreenState extends State<ConnectionModeScreen> {
   ConnectionMode? _selectedMode;
   final _listController = ScrollController();
+  final Map<ConnectionMode, GlobalKey> _modeKeys = {
+    for (final mode in _modes) mode: GlobalKey(),
+  };
 
   @override
   void initState() {
@@ -29,6 +32,21 @@ class _ConnectionModeScreenState extends State<ConnectionModeScreen> {
   void dispose() {
     _listController.dispose();
     super.dispose();
+  }
+
+  void _selectMode(ConnectionMode mode) {
+    setState(() => _selectedMode = mode);
+    // After the selection rebuild (border / check icon), scroll just enough
+    // so a clipped card becomes fully visible — no-op if already in view.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final ctx = _modeKeys[mode]?.currentContext;
+      if (ctx == null || !ctx.mounted) return;
+      Scrollable.ensureVisible(
+        ctx,
+        duration: const Duration(milliseconds: 280),
+        curve: Curves.easeOutCubic,
+      );
+    });
   }
 
   void _onContinue() {
@@ -115,18 +133,24 @@ class _ConnectionModeScreenState extends State<ConnectionModeScreen> {
                   const SizedBox(height: 12),
                   Flexible(
                     fit: FlexFit.loose,
-                    child: Scrollbar(
-                      controller: _listController,
+                    child: ScrollConfiguration(
+                      behavior: ScrollConfiguration.of(context).copyWith(
+                        scrollbars: false,
+                      ),
                       child: ListView.separated(
                         controller: _listController,
                         primary: false,
                         shrinkWrap: true,
                         padding: EdgeInsets.zero,
                         itemCount: _modes.length,
-                        separatorBuilder: (_, __) =>
-                            const SizedBox(height: 10),
-                        itemBuilder: (context, i) =>
-                            _buildModeCard(_modes[i]),
+                        separatorBuilder: (_, __) => const SizedBox(height: 10),
+                        itemBuilder: (context, i) {
+                          final mode = _modes[i];
+                          return KeyedSubtree(
+                            key: _modeKeys[mode],
+                            child: _buildModeCard(mode),
+                          );
+                        },
                       ),
                     ),
                   ),
@@ -162,7 +186,7 @@ class _ConnectionModeScreenState extends State<ConnectionModeScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Choose how to connect. Flash the ESP32 with the matching ground-station sketch, then continue.',
+            'Flash GS_ALL_PROTOCOLS.ino once, then choose how the app connects.',
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
                   color: colors.textSecondary,
                 ),
@@ -187,7 +211,7 @@ class _ConnectionModeScreenState extends State<ConnectionModeScreen> {
       enabled: supported,
       disabledReason:
           supported ? null : 'Bluetooth mode is not available on Web.',
-      onTap: supported ? () => setState(() => _selectedMode = mode) : null,
+      onTap: supported ? () => _selectMode(mode) : null,
     );
   }
 
@@ -335,8 +359,11 @@ class _ModeCard extends StatelessWidget {
                     ],
                   ),
                 ),
-                if (selected)
-                  Icon(Icons.check_circle, color: accentColor, size: 22),
+                Icon(
+                  Icons.check_circle,
+                  color: selected ? accentColor : Colors.transparent,
+                  size: 22,
+                ),
               ],
             ),
           ),
