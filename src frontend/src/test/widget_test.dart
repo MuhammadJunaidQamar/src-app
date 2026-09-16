@@ -72,7 +72,10 @@ void main() {
     );
     expect(find.text('Faculty of Engineering'), findsOneWidget);
     expect(find.text('University of Central Punjab'), findsOneWidget);
-    expect(find.text('kamran.saleem@ucp.edu.pk'), findsOneWidget);
+    expect(
+        find.text(
+            'https://sites.google.com/view/sspace4all/space-camp/space-camp-2026'),
+        findsOneWidget);
     expect(find.text('Project Gallery'), findsNothing);
   });
 }

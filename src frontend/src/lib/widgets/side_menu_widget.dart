@@ -137,60 +137,27 @@ class _SideMenuWidgetState extends State<SideMenuWidget> {
   }
 
   Widget buildMenuEntry(SideMenuData data, int index, AppThemeColors colors) {
-    final isSelected = Global.pageIdx == index;
-    final entryColor = colors.tuneAccent(data.menu[index].color);
-    final onEntryColor = _onMenuAccent(colors, entryColor);
-    return Container(
-      margin: EdgeInsets.symmetric(vertical: 5),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.all(
-          Radius.circular(16.0),
-        ),
-        color: isSelected ? entryColor : Colors.transparent,
-      ),
-      child: InkWell(
-        mouseCursor: clickCursor,
-        onTap: () {
-          setState(() {
-            Global.pageIdx = index;
-          });
-          widget.onPageSelected(index);
-        },
-        child: Row(
-          children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 7),
-              child: Icon(
-                data.menu[index].icon,
-                color: isSelected ? onEntryColor : entryColor,
-              ),
-            ),
-            Text(
-              data.menu[index].title,
-              style: TextStyle(
-                fontSize: 16,
-                color: isSelected ? onEntryColor : colors.textPrimary,
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+    return _menuRow(data, index, colors);
   }
 
   Widget infoAndThemeCorner(
       SideMenuData data, int index, AppThemeColors colors) {
+    return _menuRow(data, index, colors);
+  }
+
+  Widget _menuRow(SideMenuData data, int index, AppThemeColors colors) {
     final isSelected = Global.pageIdx == index;
     final entryColor = colors.tuneAccent(data.menu[index].color);
-    final onEntryColor = _onMenuAccent(colors, entryColor);
+    // Yellows/oranges stay too light to carry white, so deepen the selected
+    // fill instead of flipping Dashboard's label to black.
+    final selectedFill = _selectedMenuFill(entryColor);
     return Container(
       margin: EdgeInsets.symmetric(vertical: 5),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.all(
           Radius.circular(16.0),
         ),
-        color: isSelected ? entryColor : Colors.transparent,
+        color: isSelected ? selectedFill : Colors.transparent,
       ),
       child: InkWell(
         mouseCursor: clickCursor,
@@ -206,14 +173,14 @@ class _SideMenuWidgetState extends State<SideMenuWidget> {
               padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 7),
               child: Icon(
                 data.menu[index].icon,
-                color: isSelected ? onEntryColor : entryColor,
+                color: isSelected ? colors.onAccent : entryColor,
               ),
             ),
             Text(
               data.menu[index].title,
               style: TextStyle(
                 fontSize: 16,
-                color: isSelected ? onEntryColor : colors.textPrimary,
+                color: isSelected ? colors.onAccent : colors.textPrimary,
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
               ),
             ),
@@ -224,18 +191,15 @@ class _SideMenuWidgetState extends State<SideMenuWidget> {
   }
 }
 
-/// Near-black ink for rows whose fill is too bright to carry white text.
-const Color _menuInk = Color(0xFF10151D);
-
-/// Icon/label colour for a selected menu row painted in [fill].
-///
-/// The row used to draw its contents in the page background colour, which only
-/// reads while that page colour is dark. Pick whichever of the theme's
-/// on-accent white or [_menuInk] contrasts more with the fill instead, so the
-/// row stays legible against every menu hue in both themes.
-Color _onMenuAccent(AppThemeColors colors, Color fill) {
-  final luminance = fill.computeLuminance();
-  final contrastWithWhite = 1.05 / (luminance + 0.05);
-  final contrastWithInk = (luminance + 0.05) / 0.05;
-  return contrastWithWhite >= contrastWithInk ? colors.onAccent : _menuInk;
+/// Darken [fill] until white ([AppThemeColors.onAccent]) has at least 3:1
+/// contrast. Indigo/blue/green rows already pass; Dashboard's koromiko orange
+/// does not, which is why its selected label used to stay black in light mode.
+Color _selectedMenuFill(Color fill) {
+  var hsl = HSLColor.fromColor(fill);
+  while (1.05 / (fill.computeLuminance() + 0.05) < 3.0 &&
+      hsl.lightness > 0.18) {
+    hsl = hsl.withLightness((hsl.lightness - 0.05).clamp(0.0, 1.0));
+    fill = hsl.toColor();
+  }
+  return fill;
 }

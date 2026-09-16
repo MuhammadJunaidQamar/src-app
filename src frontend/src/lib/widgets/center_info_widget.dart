@@ -5,7 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 const _officeNumber = '+92 42 35880007';
 const _mobileNumber = '+92 335 437 0587';
-const _website = 'www.ucp.edu.pk';
+const _website = 'https://sites.google.com/view/space4all/space-camp/space-camp-2026';
 const _email = 'kamran.saleem@ucp.edu.pk';
 
 /// Opens the center details without moving the user away from their current
