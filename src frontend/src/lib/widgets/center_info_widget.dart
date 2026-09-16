@@ -10,8 +10,12 @@ const _email = 'kamran.saleem@ucp.edu.pk';
 
 /// Opens the center details without moving the user away from their current
 /// workflow. Phones use a bottom sheet; wider layouts use a compact dialog.
-Future<void> showCenterInfo(BuildContext context) async {
+Future<void> showCenterInfo(
+  BuildContext context, {
+  Color? accentColor,
+}) async {
   final colors = context.colors;
+  final accent = accentColor ?? colors.positive;
   final isCompact = MediaQuery.sizeOf(context).width < 700;
 
   if (isCompact) {
@@ -22,16 +26,17 @@ Future<void> showCenterInfo(BuildContext context) async {
       showDragHandle: true,
       backgroundColor: colors.surfaceElevated,
       barrierColor: colors.scrim,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      shape: RoundedRectangleBorder(
+        side: BorderSide(color: accent.withValues(alpha: 0.28)),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
       ),
       builder: (sheetContext) => ConstrainedBox(
         constraints: BoxConstraints(
           maxHeight: MediaQuery.sizeOf(sheetContext).height * 0.86,
         ),
-        child: const SingleChildScrollView(
-          padding: EdgeInsets.fromLTRB(20, 0, 20, 28),
-          child: CenterInfoContent(),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
+          child: CenterInfoContent(accentColor: accent),
         ),
       ),
     );
@@ -45,7 +50,7 @@ Future<void> showCenterInfo(BuildContext context) async {
       backgroundColor: dialogContext.colors.surfaceElevated,
       insetPadding: const EdgeInsets.all(32),
       shape: RoundedRectangleBorder(
-        side: BorderSide(color: dialogContext.colors.cardBorder),
+        side: BorderSide(color: accent.withValues(alpha: 0.28)),
         borderRadius: BorderRadius.circular(28),
       ),
       child: ConstrainedBox(
@@ -56,6 +61,7 @@ Future<void> showCenterInfo(BuildContext context) async {
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(28),
           child: CenterInfoContent(
+            accentColor: accent,
             onClose: () => Navigator.of(dialogContext).pop(),
           ),
         ),
@@ -67,14 +73,19 @@ Future<void> showCenterInfo(BuildContext context) async {
 /// Reusable institutional and contact content for both the full info page and
 /// the protocol-selection quick view.
 class CenterInfoContent extends StatelessWidget {
-  const CenterInfoContent({super.key, this.onClose});
+  const CenterInfoContent({
+    super.key,
+    this.accentColor,
+    this.onClose,
+  });
 
+  final Color? accentColor;
   final VoidCallback? onClose;
 
   @override
   Widget build(BuildContext context) {
     final colors = context.colors;
-    final accent = colors.positive;
+    final accent = accentColor ?? colors.positive;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -227,6 +238,7 @@ class CenterInfoContent extends StatelessWidget {
                     label: 'Office',
                     value: '$_officeNumber, Ext. 441',
                     uri: Uri.parse('tel:+924235880007'),
+                    accentColor: accent,
                   ),
                 ),
                 SizedBox(
@@ -236,6 +248,7 @@ class CenterInfoContent extends StatelessWidget {
                     label: 'Mobile',
                     value: _mobileNumber,
                     uri: Uri.parse('tel:+923354370587'),
+                    accentColor: accent,
                   ),
                 ),
                 SizedBox(
@@ -245,6 +258,7 @@ class CenterInfoContent extends StatelessWidget {
                     label: 'Website',
                     value: _website,
                     uri: Uri.parse('https://$_website'),
+                    accentColor: accent,
                   ),
                 ),
                 SizedBox(
@@ -257,6 +271,7 @@ class CenterInfoContent extends StatelessWidget {
                       scheme: 'mailto',
                       path: _email,
                     ),
+                    accentColor: accent,
                   ),
                 ),
               ],
@@ -274,12 +289,14 @@ class _ContactTile extends StatelessWidget {
     required this.label,
     required this.value,
     required this.uri,
+    required this.accentColor,
   });
 
   final IconData icon;
   final String label;
   final String value;
   final Uri uri;
+  final Color accentColor;
 
   Future<void> _open() async {
     try {
@@ -309,12 +326,12 @@ class _ContactTile extends StatelessWidget {
                 width: 38,
                 height: 38,
                 decoration: BoxDecoration(
-                  color: colors.positive.withValues(alpha: 0.13),
+                  color: accentColor.withValues(alpha: 0.13),
                   borderRadius: BorderRadius.circular(11),
                 ),
                 child: Icon(
                   icon,
-                  color: colors.positive,
+                  color: accentColor,
                   size: 20,
                 ),
               ),

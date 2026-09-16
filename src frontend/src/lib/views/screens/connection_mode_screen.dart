@@ -168,8 +168,7 @@ class _ConnectionModeScreenState extends State<ConnectionModeScreen> {
 
   Widget _buildHeader(BuildContext context) {
     final colors = context.colors;
-    final canOpenInfo = _selectedMode != null;
-    final infoAccent = canOpenInfo
+    final infoAccent = _selectedMode != null
         ? _accentForMode(context, _selectedMode!)
         : colors.textTertiary;
 
@@ -196,34 +195,24 @@ class _ConnectionModeScreenState extends State<ConnectionModeScreen> {
               ),
               const SizedBox(width: 12),
               Tooltip(
-                message: canOpenInfo
-                    ? 'View center information'
-                    : 'Select a connection mode first',
-                child: AnimatedOpacity(
-                  duration: const Duration(milliseconds: 180),
-                  opacity: canOpenInfo ? 1 : 0.48,
-                  child: IconButton(
-                    onPressed:
-                        canOpenInfo ? () => showCenterInfo(context) : null,
-                    style: IconButton.styleFrom(
-                      minimumSize: const Size(42, 42),
-                      backgroundColor: infoAccent.withValues(
-                          alpha: canOpenInfo ? 0.14 : 0.08),
-                      disabledBackgroundColor:
-                          colors.surfaceStrong.withValues(alpha: 0.35),
-                      foregroundColor: infoAccent,
-                      disabledForegroundColor: colors.textTertiary,
-                      side: BorderSide(
-                        color: canOpenInfo
-                            ? infoAccent.withValues(alpha: 0.42)
-                            : colors.cardBorder,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(13),
-                      ),
-                    ),
-                    icon: const Icon(Icons.info_outline_rounded, size: 22),
+                message: 'View center information',
+                child: IconButton(
+                  onPressed: () => showCenterInfo(
+                    context,
+                    accentColor: infoAccent,
                   ),
+                  style: IconButton.styleFrom(
+                    minimumSize: const Size(42, 42),
+                    backgroundColor: infoAccent.withValues(alpha: 0.14),
+                    foregroundColor: infoAccent,
+                    side: BorderSide(
+                      color: infoAccent.withValues(alpha: 0.42),
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(13),
+                    ),
+                  ),
+                  icon: const Icon(Icons.info_outline_rounded, size: 22),
                 ),
               ),
             ],
