@@ -6,6 +6,7 @@ import 'package:src/utils/desktop_interaction.dart';
 import 'package:src/utils/routing/routes.dart';
 import 'package:src/utils/routing/routes_name.dart';
 import 'package:src/view_model/view_model.dart';
+import 'package:src/widgets/center_info_widget.dart';
 import 'package:src/widgets/custom_card_widget.dart';
 
 class ConnectionModeScreen extends StatefulWidget {
@@ -167,6 +168,11 @@ class _ConnectionModeScreenState extends State<ConnectionModeScreen> {
 
   Widget _buildHeader(BuildContext context) {
     final colors = context.colors;
+    final canOpenInfo = _selectedMode != null;
+    final infoAccent = canOpenInfo
+        ? _accentForMode(context, _selectedMode!)
+        : colors.textTertiary;
+
     return CustomCard(
       color: colors.isDark
           ? AppColors.blackPearlColor.withValues(alpha: 0.82)
@@ -177,12 +183,50 @@ class _ConnectionModeScreenState extends State<ConnectionModeScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            AppText.appName,
-            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                  color: colors.textStrong,
-                  fontWeight: FontWeight.w700,
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  AppText.appName,
+                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                        color: colors.textStrong,
+                        fontWeight: FontWeight.w700,
+                      ),
                 ),
+              ),
+              const SizedBox(width: 12),
+              Tooltip(
+                message: canOpenInfo
+                    ? 'View center information'
+                    : 'Select a connection mode first',
+                child: AnimatedOpacity(
+                  duration: const Duration(milliseconds: 180),
+                  opacity: canOpenInfo ? 1 : 0.48,
+                  child: IconButton(
+                    onPressed:
+                        canOpenInfo ? () => showCenterInfo(context) : null,
+                    style: IconButton.styleFrom(
+                      minimumSize: const Size(42, 42),
+                      backgroundColor: infoAccent.withValues(
+                          alpha: canOpenInfo ? 0.14 : 0.08),
+                      disabledBackgroundColor:
+                          colors.surfaceStrong.withValues(alpha: 0.35),
+                      foregroundColor: infoAccent,
+                      disabledForegroundColor: colors.textTertiary,
+                      side: BorderSide(
+                        color: canOpenInfo
+                            ? infoAccent.withValues(alpha: 0.42)
+                            : colors.cardBorder,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(13),
+                      ),
+                    ),
+                    icon: const Icon(Icons.info_outline_rounded, size: 22),
+                  ),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 8),
           Text(

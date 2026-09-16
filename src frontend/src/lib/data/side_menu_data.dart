@@ -24,7 +24,7 @@ class SideMenuData {
     ),
     MenuModel(
       icon: Icons.info_outline,
-      title: 'Project Info',
+      title: 'Center Info',
       color: AppColors.mediumSeaGreenColor,
     ),
   ];

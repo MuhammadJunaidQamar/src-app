@@ -1,30 +1,54 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-
-import 'package:src/main.dart';
+import 'package:src/theme/app_theme_colors.dart';
+import 'package:src/utils/connection/connection_config.dart';
+import 'package:src/views/screens/connection_mode_screen.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  setUp(ConnectionConfig.resetSelection);
+  tearDown(ConnectionConfig.resetSelection);
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+  testWidgets('center info unlocks after a protocol is selected',
+      (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData(
+          useMaterial3: true,
+          brightness: Brightness.dark,
+          extensions: const [AppThemeColors.dark],
+        ),
+        home: const ConnectionModeScreen(),
+      ),
+    );
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
+    final infoButtonFinder = find.widgetWithIcon(
+      IconButton,
+      Icons.info_outline_rounded,
+    );
+    expect(
+      tester.widget<IconButton>(infoButtonFinder).onPressed,
+      isNull,
+    );
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    await tester.tap(
+      find.text(
+        ConnectionConfig.modeTitle(ConnectionMode.bleGroundStation),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      tester.widget<IconButton>(infoButtonFinder).onPressed,
+      isNotNull,
+    );
+
+    await tester.tap(infoButtonFinder);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Electrical Engineering Department'), findsOneWidget);
+    expect(find.text('Faculty of Engineering'), findsOneWidget);
+    expect(find.text('University of Central Punjab'), findsOneWidget);
+    expect(find.text('kamran.saleem@ucp.edu.pk'), findsOneWidget);
+    expect(find.text('Project Gallery'), findsNothing);
   });
 }
