@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:pretty_qr_code/pretty_qr_code.dart';
 import 'package:src/theme/app_theme_colors.dart';
@@ -156,87 +158,62 @@ class CenterInfoContent extends StatelessWidget {
               color: accent.withValues(alpha: 0.22),
             ),
           ),
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final details = Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(
-                    Icons.account_balance_outlined,
-                    color: accent,
-                    size: 24,
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.account_balance_outlined,
+                color: accent,
+                size: 24,
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Faculty of Engineering',
+                      style: TextStyle(
+                        color: colors.textStrong,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 5),
+                    Text(
+                      'University of Central Punjab',
+                      style: TextStyle(
+                        color: colors.textPrimary,
+                        fontSize: 14,
+                        height: 1.35,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Row(
                       children: [
-                        Text(
-                          'Faculty of Engineering',
-                          style: TextStyle(
-                            color: colors.textStrong,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
+                        Icon(
+                          Icons.location_on_outlined,
+                          color: colors.textTertiary,
+                          size: 16,
                         ),
-                        const SizedBox(height: 5),
-                        Text(
-                          'University of Central Punjab',
-                          style: TextStyle(
-                            color: colors.textPrimary,
-                            fontSize: 14,
-                            height: 1.35,
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            'Lahore, Pakistan',
+                            style: TextStyle(
+                              color: colors.textSecondary,
+                              fontSize: 13,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 3),
-                        Row(
-                          children: [
-                            Icon(
-                              Icons.location_on_outlined,
-                              color: colors.textTertiary,
-                              size: 16,
-                            ),
-                            const SizedBox(width: 4),
-                            Expanded(
-                              child: Text(
-                                'Lahore, Pakistan',
-                                style: TextStyle(
-                                  color: colors.textSecondary,
-                                  fontSize: 13,
-                                ),
-                              ),
-                            ),
-                          ],
                         ),
                       ],
                     ),
-                  ),
-                ],
-              );
-              final qrCode = _WebsiteQrCode(accentColor: accent);
-
-              if (constraints.maxWidth >= 350) {
-                return Row(
-                  children: [
-                    Expanded(child: details),
-                    const SizedBox(width: 18),
-                    qrCode,
                   ],
-                );
-              }
-
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  details,
-                  const SizedBox(height: 16),
-                  Align(
-                    alignment: Alignment.center,
-                    child: qrCode,
-                  ),
-                ],
-              );
-            },
+                ),
+              ),
+              const SizedBox(width: 12),
+              _WebsiteQrCode(accentColor: accent),
+            ],
           ),
         ),
         const SizedBox(height: 24),
@@ -328,19 +305,77 @@ class _WebsiteQrCode extends StatelessWidget {
     }
   }
 
+  /// Builds a pale tile + dark ink pair that keeps accent hue while staying
+  /// scannable. Translucent accents (e.g. unselected `textTertiary`) are
+  /// resolved against the sheet surface first so they never become washed white.
+  static ({Color background, Color foreground, Color border}) _scanSafeColors(
+    Color accent,
+    AppThemeColors colors,
+  ) {
+    final resolved = Color.alphaBlend(
+      accent,
+      colors.isDark ? colors.surfaceElevated : colors.surface,
+    );
+    final hsl = HSLColor.fromColor(resolved);
+
+    final background = Color.lerp(Colors.white, resolved, 0.10)!;
+
+    // Desaturated greys need deeper ink; saturated accents can stay a bit
+    // lighter while still reading as the active protocol colour.
+    final targetLightness = hsl.saturation < 0.18 ? 0.16 : 0.24;
+    var foreground = hsl
+        .withSaturation(
+          hsl.saturation < 0.18
+              ? 0.08
+              : (hsl.saturation * 1.05).clamp(0.35, 1.0),
+        )
+        .withLightness(targetLightness)
+        .toColor();
+
+    // Guarantee a strong luminance gap for cameras / tired eyes.
+    if (_contrastRatio(foreground, background) < 7.0) {
+      foreground = hsl
+          .withSaturation(hsl.saturation.clamp(0.0, 1.0))
+          .withLightness(0.14)
+          .toColor();
+      if (_contrastRatio(foreground, background) < 7.0) {
+        foreground = Color.alphaBlend(
+          Colors.black.withValues(alpha: 0.78),
+          resolved,
+        );
+      }
+    }
+
+    final border =
+        Color.lerp(foreground, resolved, 0.35)!.withValues(alpha: 0.55);
+
+    return (background: background, foreground: foreground, border: border);
+  }
+
+  static double _relativeLuminance(Color color) {
+    double channel(double value) {
+      return value <= 0.03928
+          ? value / 12.92
+          : math.pow((value + 0.055) / 1.055, 2.4).toDouble();
+    }
+
+    return 0.2126 * channel(color.r) +
+        0.7152 * channel(color.g) +
+        0.0722 * channel(color.b);
+  }
+
+  static double _contrastRatio(Color a, Color b) {
+    final l1 = _relativeLuminance(a);
+    final l2 = _relativeLuminance(b);
+    final lighter = l1 > l2 ? l1 : l2;
+    final darker = l1 > l2 ? l2 : l1;
+    return (lighter + 0.05) / (darker + 0.05);
+  }
+
   @override
   Widget build(BuildContext context) {
-    final opaqueAccent = accentColor.withValues(alpha: 1);
-    final qrBackground = Color.alphaBlend(
-      opaqueAccent.withValues(alpha: 0.11),
-      Colors.white,
-    );
-    // Bright accents need darker ink against the pale tile to remain reliably
-    // scannable. Blending with black preserves the active accent's hue.
-    final qrForeground = Color.alphaBlend(
-      Colors.black.withValues(alpha: 0.55),
-      opaqueAccent,
-    );
+    final colors = context.colors;
+    final palette = _scanSafeColors(accentColor, colors);
 
     return Semantics(
       label: 'QR code for the Space Research Center website. '
@@ -351,16 +386,14 @@ class _WebsiteQrCode extends StatelessWidget {
         child: SizedBox.square(
           dimension: 92,
           child: Material(
-            color: qrBackground,
+            color: palette.background,
             elevation: 2,
-            shadowColor: accentColor.withValues(alpha: 0.28),
+            shadowColor: palette.foreground.withValues(alpha: 0.28),
             surfaceTintColor: Colors.transparent,
             clipBehavior: Clip.antiAlias,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(15),
-              side: BorderSide(
-                color: accentColor.withValues(alpha: 0.34),
-              ),
+              side: BorderSide(color: palette.border),
             ),
             child: InkWell(
               key: const Key('center-info-website-qr'),
@@ -372,10 +405,10 @@ class _WebsiteQrCode extends StatelessWidget {
                   data: _website,
                   errorCorrectLevel: QrErrorCorrectLevel.M,
                   decoration: PrettyQrDecoration(
-                    background: qrBackground,
+                    background: palette.background,
                     quietZone: PrettyQrQuietZone.standard,
                     shape: PrettyQrSmoothSymbol(
-                      color: qrForeground,
+                      color: palette.foreground,
                       roundFactor: 0.65,
                     ),
                   ),

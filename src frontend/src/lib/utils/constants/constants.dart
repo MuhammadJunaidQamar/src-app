@@ -39,7 +39,7 @@ class Constants {
 }
 
 class AppText {
-  static const String appName = 'Space Research Center';
+  static const String appName = 'SRC Ground Station';
   static const String appVersion = '';
 }
 

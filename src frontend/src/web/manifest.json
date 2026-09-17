@@ -1,6 +1,6 @@
 {
-    "name": "src",
-    "short_name": "src",
+    "name": "SRC Ground Station",
+    "short_name": "SRC GS",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
