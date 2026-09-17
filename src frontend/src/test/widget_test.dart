@@ -4,6 +4,7 @@ import 'package:src/theme/app_theme_colors.dart';
 import 'package:src/utils/connection/connection_config.dart';
 import 'package:src/utils/constants/constants.dart';
 import 'package:src/views/screens/connection_mode_screen.dart';
+import 'package:src/widgets/center_info_widget.dart';
 
 void main() {
   setUp(ConnectionConfig.resetSelection);
@@ -35,13 +36,13 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Electrical Engineering Department'), findsOneWidget);
+    final centerInfoRocketFinder = find.descendant(
+      of: find.byType(CenterInfoContent),
+      matching: find.byIcon(Icons.rocket_launch_outlined),
+    );
     expect(
-      tester
-          .widget<Icon>(
-            find.byIcon(Icons.rocket_launch_outlined),
-          )
-          .color,
-      AppThemeColors.dark.positive,
+      tester.widget<Icon>(centerInfoRocketFinder).color,
+      AppThemeColors.dark.textTertiary,
     );
 
     await tester.tap(find.byIcon(Icons.close));
@@ -63,19 +64,19 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(
-      tester
-          .widget<Icon>(
-            find.byIcon(Icons.rocket_launch_outlined),
-          )
-          .color,
+      tester.widget<Icon>(centerInfoRocketFinder).color,
       AppColors.tropicalIndigoColor,
     );
     expect(find.text('Faculty of Engineering'), findsOneWidget);
     expect(find.text('University of Central Punjab'), findsOneWidget);
     expect(
         find.text(
-            'https://sites.google.com/view/sspace4all/space-camp/space-camp-2026'),
+            'https://sites.google.com/view/space4all/space-camp/space-camp-2026'),
         findsOneWidget);
+    expect(
+      find.byKey(const Key('center-info-website-qr')),
+      findsOneWidget,
+    );
     expect(find.text('Project Gallery'), findsNothing);
   });
 }

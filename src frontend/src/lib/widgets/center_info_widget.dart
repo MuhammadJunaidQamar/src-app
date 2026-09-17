@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:pretty_qr_code/pretty_qr_code.dart';
 import 'package:src/theme/app_theme_colors.dart';
 import 'package:src/utils/desktop_interaction.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 const _officeNumber = '+92 42 35880007';
 const _mobileNumber = '+92 335 437 0587';
-const _website = 'https://sites.google.com/view/space4all/space-camp/space-camp-2026';
+const _website =
+    'https://sites.google.com/view/space4all/space-camp/space-camp-2026';
 const _email = 'kamran.saleem@ucp.edu.pk';
 
 /// Opens the center details without moving the user away from their current
@@ -146,7 +148,7 @@ class CenterInfoContent extends StatelessWidget {
         ),
         const SizedBox(height: 24),
         Container(
-          padding: const EdgeInsets.all(18),
+          padding: const EdgeInsets.fromLTRB(18, 12, 12, 12),
           decoration: BoxDecoration(
             color: accent.withValues(alpha: colors.isDark ? 0.08 : 0.06),
             borderRadius: BorderRadius.circular(18),
@@ -154,60 +156,87 @@ class CenterInfoContent extends StatelessWidget {
               color: accent.withValues(alpha: 0.22),
             ),
           ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Icon(
-                Icons.account_balance_outlined,
-                color: accent,
-                size: 24,
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Faculty of Engineering',
-                      style: TextStyle(
-                        color: colors.textStrong,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 5),
-                    Text(
-                      'University of Central Punjab',
-                      style: TextStyle(
-                        color: colors.textPrimary,
-                        fontSize: 14,
-                        height: 1.35,
-                      ),
-                    ),
-                    const SizedBox(height: 3),
-                    Row(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final details = Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(
+                    Icons.account_balance_outlined,
+                    color: accent,
+                    size: 24,
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Icon(
-                          Icons.location_on_outlined,
-                          color: colors.textTertiary,
-                          size: 16,
-                        ),
-                        const SizedBox(width: 4),
-                        Expanded(
-                          child: Text(
-                            'Lahore, Pakistan',
-                            style: TextStyle(
-                              color: colors.textSecondary,
-                              fontSize: 13,
-                            ),
+                        Text(
+                          'Faculty of Engineering',
+                          style: TextStyle(
+                            color: colors.textStrong,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
                           ),
+                        ),
+                        const SizedBox(height: 5),
+                        Text(
+                          'University of Central Punjab',
+                          style: TextStyle(
+                            color: colors.textPrimary,
+                            fontSize: 14,
+                            height: 1.35,
+                          ),
+                        ),
+                        const SizedBox(height: 3),
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.location_on_outlined,
+                              color: colors.textTertiary,
+                              size: 16,
+                            ),
+                            const SizedBox(width: 4),
+                            Expanded(
+                              child: Text(
+                                'Lahore, Pakistan',
+                                style: TextStyle(
+                                  color: colors.textSecondary,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
+                  ),
+                ],
+              );
+              final qrCode = _WebsiteQrCode(accentColor: accent);
+
+              if (constraints.maxWidth >= 350) {
+                return Row(
+                  children: [
+                    Expanded(child: details),
+                    const SizedBox(width: 18),
+                    qrCode,
                   ],
-                ),
-              ),
-            ],
+                );
+              }
+
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  details,
+                  const SizedBox(height: 16),
+                  Align(
+                    alignment: Alignment.center,
+                    child: qrCode,
+                  ),
+                ],
+              );
+            },
           ),
         ),
         const SizedBox(height: 24),
@@ -257,7 +286,7 @@ class CenterInfoContent extends StatelessWidget {
                     icon: Icons.language_outlined,
                     label: 'Website',
                     value: _website,
-                    uri: Uri.parse('https://$_website'),
+                    uri: Uri.parse(_website),
                     accentColor: accent,
                   ),
                 ),
@@ -279,6 +308,83 @@ class CenterInfoContent extends StatelessWidget {
           },
         ),
       ],
+    );
+  }
+}
+
+class _WebsiteQrCode extends StatelessWidget {
+  const _WebsiteQrCode({required this.accentColor});
+
+  final Color accentColor;
+
+  Future<void> _openWebsite() async {
+    try {
+      await launchUrl(
+        Uri.parse(_website),
+        mode: LaunchMode.externalApplication,
+      );
+    } on Exception {
+      // The website remains available in the contact tile if launch fails.
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final opaqueAccent = accentColor.withValues(alpha: 1);
+    final qrBackground = Color.alphaBlend(
+      opaqueAccent.withValues(alpha: 0.11),
+      Colors.white,
+    );
+    // Bright accents need darker ink against the pale tile to remain reliably
+    // scannable. Blending with black preserves the active accent's hue.
+    final qrForeground = Color.alphaBlend(
+      Colors.black.withValues(alpha: 0.55),
+      opaqueAccent,
+    );
+
+    return Semantics(
+      label: 'QR code for the Space Research Center website. '
+          'Scan or tap to open.',
+      button: true,
+      child: Tooltip(
+        message: 'Scan or tap to open website',
+        child: SizedBox.square(
+          dimension: 92,
+          child: Material(
+            color: qrBackground,
+            elevation: 2,
+            shadowColor: accentColor.withValues(alpha: 0.28),
+            surfaceTintColor: Colors.transparent,
+            clipBehavior: Clip.antiAlias,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(15),
+              side: BorderSide(
+                color: accentColor.withValues(alpha: 0.34),
+              ),
+            ),
+            child: InkWell(
+              key: const Key('center-info-website-qr'),
+              mouseCursor: clickCursor,
+              onTap: _openWebsite,
+              child: Padding(
+                padding: const EdgeInsets.all(3),
+                child: PrettyQrView.data(
+                  data: _website,
+                  errorCorrectLevel: QrErrorCorrectLevel.M,
+                  decoration: PrettyQrDecoration(
+                    background: qrBackground,
+                    quietZone: PrettyQrQuietZone.standard,
+                    shape: PrettyQrSmoothSymbol(
+                      color: qrForeground,
+                      roundFactor: 0.65,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
